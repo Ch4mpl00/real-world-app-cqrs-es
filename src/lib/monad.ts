@@ -1,13 +1,13 @@
 export type Error<E> = {
   readonly type: 'Error',
   readonly error: E
-  readonly isSuccess: false
+  readonly ok: false
 }
 
 type Success<T> = {
   readonly type: 'Success',
   readonly value: T
-  readonly isSuccess: true
+  readonly ok: true
 }
 
 export type Result<T, E> =
@@ -18,15 +18,15 @@ export const ok = <T> (val: T): Success<T> => {
   return {
     type: 'Success',
     value: val,
-    isSuccess: true
+    ok: true
   }
 }
 
-export const fail = <T> (val: T): Error<T> => {
+export const error = <T> (val: T): Error<T> => {
   return {
     type: 'Error',
     error: val,
-    isSuccess: false
+    ok: false
   }
 }
 

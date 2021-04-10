@@ -1,5 +1,6 @@
 import { IncomingHttpHeaders } from 'http'
 import * as uuid from 'uuid'
+import { APIGatewayProxyResult } from 'aws-lambda';
 
 export type HttpResponseBag = {
   readonly body: object,
@@ -41,4 +42,53 @@ export const createHttpRequestBag = (
   headers: IncomingHttpHeaders
 ): HttpRequestBag => {
   return { body, params, method, query, headers, requestId: uuid.v4() }
+}
+
+export type ApiGatewayResponse = Promise<APIGatewayProxyResult>;
+
+export type Identity = {
+  authorizer: {
+    principalId: string;
+    pkey: string;
+    Username: string;
+    auth0Id: string;
+    email: string;
+    phoneNumber?: string;
+    isTFAEnabled: boolean;
+  }
+}
+
+export type TFA = {
+  isTFAEnabled: boolean;
+  phoneNumber?: string;
+}
+
+export type InternalEventType = {
+  internal: TFA
+}
+
+export type EventRequestContext<T> = {
+  requestContext: T
+}
+
+export type ApiGatewayEventBody<T = any> = {
+  body: T;
+  rawBody: string;
+  headers: Record<string, string>
+}
+
+export type EventQuery<T> = {
+  queryStringParameters: T
+}
+
+export type EventPath<T> = {
+  pathParameters: T
+}
+
+export type EventHeader<T> = {
+  headers: T
+}
+
+export type ProxyHeader = {
+  authorization: string;
 }
