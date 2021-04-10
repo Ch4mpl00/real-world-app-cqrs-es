@@ -22,6 +22,7 @@ export const handleRegisterUserCommand = (
     password: await hash(command.data.password)
   }
 
+  // TODO: call query model to check does email exist?
   const result = registerUser(uuid(), data, {
     emailIsBusy: false,
     userNameIsBusy: false
