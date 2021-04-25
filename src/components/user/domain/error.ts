@@ -5,3 +5,8 @@ export type EmailAlreadyExists = {
 
 export type Error =
   | EmailAlreadyExists
+
+export const createEmailAlreadyExistsError = (email: string): EmailAlreadyExists => ({
+  type: 'EmailAlreadyExists',
+  email
+})

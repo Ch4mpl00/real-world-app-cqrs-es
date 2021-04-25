@@ -1,34 +1,31 @@
-import { EventStoreDBClient, jsonEvent } from '@eventstore/db-client'
+import { Db } from 'mongodb';
+import { Emitter } from 'mitt';
 
 type Event = {
   readonly aggregateId: string
   readonly type: string
   readonly payload: any
+  readonly timestamp?: number
 }
 
 type Stream =
   | 'user'
   | 'article'
 
-export type GetEvents = (id: string) => Promise<ReadonlyArray<Event>>
-export type CommitEvent = <T extends Event>(stream: Stream, event: T) => Promise<T>
+export type GetEvents = <T extends Event>(stream: Stream, id: string, fromTimestamp?: number) => Promise<ReadonlyArray<T>>
+export type CommitEvent = <T extends Event>(stream: Stream, event: T) => Promise<void>
 
 export type EventStore = {
   readonly getEvents: GetEvents
   readonly commitEvent: CommitEvent
 }
 
-export const eventStore = (client: EventStoreDBClient): EventStore => ({
+export const eventStore = (db: Db, emitter: Emitter): EventStore => ({
   commitEvent: async <T extends Event> (stream: Stream, event: T) => {
-    console.log('start event', event, 'end event')
-    await client.appendToStream(`${stream}-${event.aggregateId}`, jsonEvent({
-      type: event.type,
-      data: { ...event.payload, aggregateId: event.aggregateId }
-    }))
-
-    return event
+    await db.collection('_events').insertOne({ ...event, stream: stream, timestamp: new Date().getTime() })
+    emitter.emit(stream, event)
   },
-  getEvents: async (id: string) => {
+  getEvents: async (stream: string, id: string, fromTimestamp: number | null | undefined = null) => {
     return []
-  }
+  },
 })

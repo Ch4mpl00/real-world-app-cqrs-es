@@ -5,8 +5,8 @@
 import 'module-alias/register'
 import bodyParser from 'body-parser'
 import express, { Request, Response } from 'express'
-import { createApp } from './composition/root'
-import { registerUser } from './web/user/actions'
+import { createApp } from '../composition/root'
+import { registerUser, updateUser } from './user/actions'
 
 const server = express()
 server.set('port', process.env.PORT || 8083)
@@ -22,17 +22,10 @@ function clientErrorHandler (err: Error, req: Request, res: Response, next: Func
 
 server.use(clientErrorHandler)
 
-const app = createApp('dev')
+const app = await createApp('dev')
 
-server.post('/api/register', async (req, res, next) => {
-  try {
-    const response = await registerUser(app)(req)
-    res.status(response.status).send(response.body)
-  } catch (e) {
-    console.log(e)
-    res.status(500).send({ error: 'Something failed!' })
-  }
-})
+server.post('/api/register', async (req, res) => registerUser(app)(req, res))
+server.put('/api/user/{id}', async (req, res) => updateUser(app)(req, res))
 
 server.listen(server.get('port'), () => {
   console.log(

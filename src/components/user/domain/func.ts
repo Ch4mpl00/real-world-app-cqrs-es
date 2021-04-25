@@ -1,39 +1,23 @@
-import { Event, UserFollowed, UserRegistered, UserUnfollowed, UserUpdated } from '@components/user/event'
 import { assertUnreachable } from '@lib/common'
 import { fail, ok, Result } from '@lib/monad'
-import { EmailAlreadyExists } from '@components/user/error'
-
-export type UserId = string
-
-export type RegisterUserData = {
-  readonly email: string
-  readonly password: string
-  readonly username: string
-}
-
-export type UpdateUserData = {
-  readonly email: string
-  readonly bio: string
-  readonly image: string | null
-}
-
-export type Profile = {
-  readonly username: string
-  readonly bio: string
-  readonly image: string | null
-}
-
-export type User = {
-  readonly id: string
-  readonly email: string
-  readonly password: string
-  readonly profile: Profile
-  readonly follows: ReadonlyArray<UserId>
-}
+import { createEmailAlreadyExistsError, EmailAlreadyExists } from '@components/user/domain'
+import {
+  createUserEmailChangedEvent,
+  createUserProfileUpdatedEvent,
+  Event,
+  UserEmailChanged,
+  UserFollowed,
+  UserRegistered,
+  UserUnfollowed,
+  UserProfileUpdated,
+  UserId,
+  RegisterUserData,
+  User,
+  UpdateUserData
+} from '@components/user/domain'
 
 type UserRegistrationContext = {
   readonly emailIsBusy: boolean
-  readonly userNameIsBusy: boolean
 }
 
 export const registerUser = (
@@ -54,23 +38,27 @@ export const registerUser = (
 
 type UpdateUserContext = {
   readonly emailIsBusy: boolean
-  readonly userNameIsBusy: boolean
 }
+
+type UpdateUserEvents =
+  | UserProfileUpdated
+  | UserEmailChanged
 
 export const updateUser = (
   user: User,
   data: UpdateUserData,
   context: UpdateUserContext
-): Result<UserUpdated, EmailAlreadyExists> => {
-  if (context.emailIsBusy) {
-    return fail({ type: 'EmailAlreadyExists', email: data.email })
+): Result<ReadonlyArray<UpdateUserEvents>, EmailAlreadyExists> => {
+  const events = []
+
+  if (data.email !== undefined) {
+    if (context.emailIsBusy) return fail(createEmailAlreadyExistsError(data.email))
+    if (data.email !== user.email) events.push(createUserEmailChangedEvent(user.id, data.email, user.email))
   }
 
-  return ok({
-    type: 'UserUpdated',
-    aggregateId: user.id,
-    payload: data
-  })
+  events.push(createUserProfileUpdatedEvent(user.id, data))
+
+  return ok(events)
 }
 
 export const followUser = (user: User, userIdToFollow: UserId): Result<UserFollowed, never> => {
@@ -93,7 +81,11 @@ export const unfollowUser = (user: User, userIdToUnfollow: UserId): Result<UserU
   })
 }
 
+// TODO: initial state
 export const apply = (user: User) => (event: Event): User => {
+  if (event.aggregateId !== user.id) {
+    return user
+  }
   switch (event.type) {
     case 'UserRegistered':
       return {
@@ -107,16 +99,18 @@ export const apply = (user: User) => (event: Event): User => {
           username: event.payload.username
         }
       }
-    case 'UserUpdated':
+    case 'UserEmailChanged':
       return {
-        id: user.id,
-        email: event.payload.email || user.email,
-        password: user.password,
-        follows: user.follows,
+        ...user,
+        email: event.payload.newEmail
+      }
+    case 'UserProfileUpdated':
+      return {
+        ...user,
         profile: {
-          bio: event.payload.bio,
-          image: event.payload.image,
-          username: user.profile.username
+          bio: event.payload.bio ?? user.profile.bio,
+          username: event.payload.username ?? user.profile.username,
+          image: event.payload.image !== undefined ? event.payload.image : user.profile.image,
         }
       }
     case 'UserFollowed':
@@ -132,4 +126,8 @@ export const apply = (user: User) => (event: Event): User => {
     default:
       assertUnreachable(event)
   }
+}
+
+export const restore = (id: UserId, events: readonly Event[]) => {
+  return events.reduce((state, event) => apply(state)(event), {} as User)
 }

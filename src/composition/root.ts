@@ -1,47 +1,43 @@
 import dotenv from 'dotenv'
-import { setupCommandHandlers as setupUserHandlers } from './user'
+import { setupCommandHandlers as setupUserHandlers, setUpPersistence } from './user'
 import { eventStore } from '@components/common/eventStore'
-import { Command as UserCommand, RegisterUser, UpdateUser } from '@components/user/command'
-import { RegisterUserResult, UpdateUserResult } from '@components/user/commandHandler'
-import { assertUnreachable } from '@lib/common'
-import { EventStoreDBClient } from '@eventstore/db-client'
+import { createCommandDispatcher } from '@components/common/dispatchers'
+import { onEvent } from '@components/user/projections'
+import { MongoClient } from 'mongodb'
+import mitt from 'mitt';
 
 dotenv.config()
-const mongoConnectionString = `mongodb://${process.env.MONGO_ROOT_USERNAME}:${process.env.MONGO_ROOT_PASSWORD}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/${process.env.MONGO_DATABASE}`
+const mongoConnectionString = `mongodb://${process.env.MONGO_ROOT_USERNAME}:${process.env.MONGO_ROOT_PASSWORD}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/`
 console.log(mongoConnectionString)
-type Command =
-  | UserCommand
 
-export const createApp = (env: 'dev' | 'prod') => {
-  const client = new EventStoreDBClient({
-    endpoint: '127.0.0.1:2113'
-  }, {
-    insecure: true
+export const createApp = async (env: 'dev' | 'prod') => {
+
+  // Create a new MongoClient
+  const mongoClient = new MongoClient(mongoConnectionString);
+  const db = (await mongoClient.connect()).db(process.env.MONGO_DATABASE);
+
+  const emitter = mitt()
+
+  emitter.on('user', (e) => {
+    onEvent(db, emitter)(e)
   })
 
-  const _eventStore = eventStore(client)
+  const _eventStore = eventStore(db, emitter)
 
-  const handlers = {
-    ...setupUserHandlers(_eventStore)
+  const query = {
+    user: setUpPersistence(db)
   }
 
-  function handleCommand (command: RegisterUser): Promise<RegisterUserResult>
-  function handleCommand (command: UpdateUser): Promise<UpdateUserResult>
-
-  function handleCommand (command: Command): Promise<any> {
-    switch (command.type) {
-      case 'RegisterUser':
-        return handlers.handleRegisterUserCommand(command)
-      case 'UpdateUser':
-        return handlers.handleUpdateUserCommand(command)
-      default:
-        assertUnreachable(command)
-    }
+  const handlers = {
+    ...setupUserHandlers(_eventStore, query.user)
   }
 
   return {
-    handleCommand
+    handleCommand: createCommandDispatcher(handlers),
+    query,
+    on: emitter.on
   }
 }
 
-export type App = ReturnType<typeof createApp>
+type ThenArgRecursive<T> = T extends PromiseLike<infer U> ? ThenArgRecursive<U> : T
+export type App = ThenArgRecursive<ReturnType<typeof createApp>>
