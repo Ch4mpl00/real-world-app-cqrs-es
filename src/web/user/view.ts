@@ -1,6 +1,6 @@
-import { UserDomainProjection } from '@components/user/projections'
+import { UserProjection } from '@components/user/projections'
 
-export const createUserView = (user: UserDomainProjection) => ({
+export const createUserView = (user: UserProjection) => ({
   user: {
     email: user.email,
     username: user.profile.username,

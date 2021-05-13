@@ -8,3 +8,10 @@ export function assertUnreachable (_: never): never {
 export const assert = (value: any, schema: Schema) => {
   Joi.assert(value, schema)
 }
+
+export type DomainEvent = {
+  type: string,
+  aggregate: string,
+  aggregateId: string,
+  payload: any
+}

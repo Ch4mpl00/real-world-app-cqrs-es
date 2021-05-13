@@ -1,6 +1,6 @@
 import { EventStore } from '@components/common/eventStore'
 import { ReadPersistence } from '@components/common/readPersistence'
-import { UserDomainProjection } from '@components/user/projections'
+import { UserProjection } from '@components/user/projections'
 import {
   RegisterUser,
   UpdateUser,
@@ -9,7 +9,7 @@ import {
   updateUserDataSchema
 } from '@components/user/command/commands'
 import { assert } from '@lib/common'
-import { hash } from '@lib/crypto'
+// import { hash } from '@lib/crypto'
 import { Event, registerUser, restore, updateUser, User, UserId } from '@components/user/domain'
 import { fail, ok } from '@lib/monad'
 
@@ -20,23 +20,25 @@ import { fail, ok } from '@lib/monad'
 * */
 export const handleRegisterUserCommand = (
   eventStore: EventStore,
-  persistence: ReadPersistence<UserDomainProjection>
+  persistence: ReadPersistence<UserProjection>
 ) => async (command: RegisterUser) => {
   assert(command.data, registerUserDataSchema)
 
   const data = {
     ...command.data,
-    password: await hash(command.data.password)
+    // password: await hash(command.data.password)
   }
 
   const result = registerUser(command.data.id, data, {
     emailIsBusy: await persistence.exists({ email: data.email })
   })
 
+  // console.log(await persistence.findOneBy({ email: data.email }))
   if (result.ok) {
     await eventStore.commitEvent('user', result.value)
+  } else {
+    // console.log(result.error)
   }
-
   return result
 }
 
@@ -47,7 +49,7 @@ export const handleRegisterUserCommand = (
 * */
 export const handleUpdateUserCommand = (
   eventStore: EventStore,
-  persistence: ReadPersistence<UserDomainProjection>
+  persistence: ReadPersistence<UserProjection>
 ) => async (command: UpdateUser) => {
   assert(command.data, updateUserDataSchema)
 
@@ -79,7 +81,7 @@ const restoreUserState = async (eventStore: EventStore, id: UserId): Promise<Use
 * */
 export const handleSendConfirmationEmailCommand = (
   eventStore: EventStore,
-  persistence: ReadPersistence<UserDomainProjection>
+  persistence: ReadPersistence<UserProjection>
 ) => async (command: RegisterUser): Promise<void> => {
   assert(command.data, sendEmailConfirmationSchema)
   // create confirmation token

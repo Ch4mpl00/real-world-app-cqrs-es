@@ -5,7 +5,7 @@ import { createErrorView } from '../lib'
 import { v4 as createUuid } from 'uuid'
 import { createUserView } from './view'
 import { UserProjectionEvent } from '@components/user/projections'
-import { match } from 'ts-pattern';
+// import { match } from 'ts-pattern';
 
 /*
 * ====================
@@ -41,9 +41,9 @@ export const registerUser = (app: App) => async (req: Request, res: Response): P
     return
   }
 
-  match(result.error.type)
-    .with('EmailAlreadyExists', () => res.status(422).send(createErrorView('email already exists')))
-    .exhaustive()
+  // match(result.error.type)
+  //   .with('EmailAlreadyExists', () => res.status(422).send(createErrorView('email already exists')))
+  //   .exhaustive()
 }
 
 /*
@@ -69,7 +69,7 @@ export const updateUser = (app: App) => async (req: Request, res: Response) => {
     return
   }
 
-  match(result.error.type)
-    .with('EmailAlreadyExists', () => res.status(422).send(createErrorView('email already exists')))
-    .exhaustive()
+  // match(result.error.type)
+  //   .with('EmailAlreadyExists', () => res.status(422).send(createErrorView('email already exists')))
+  //   .exhaustive()
 }
