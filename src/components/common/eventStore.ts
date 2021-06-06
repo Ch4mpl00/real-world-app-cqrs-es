@@ -23,9 +23,9 @@ export type EventStore = {
 export const eventStore = (db: Db, emitter: Emitter): EventStore => ({
   commitEvent: async <T extends Event> (stream: Stream, event: T) => {
     await db.collection('_events').insertOne({ ...event, stream: stream, timestamp: new Date().getTime() })
-    emitter.emit(stream, event)
+    emitter.emit(event.type, event)
   },
-  getEvents: async (stream: string, id: string, fromTimestamp: number | null | undefined = null) => {
-    return []
+  getEvents: async <T extends Event>(stream: string, id: string, fromTimestamp: number | null | undefined = null) => {
+    return await db.collection('_events').find({ stream, aggregateId: id }).toArray()
   },
 })

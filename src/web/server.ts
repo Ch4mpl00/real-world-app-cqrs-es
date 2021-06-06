@@ -24,12 +24,8 @@ server.use(clientErrorHandler)
 
 const app = createApp('dev')
 
-server.post('/api/register', async (req, res) => registerUser(await app)(req, res))
-server.put('/api/user/{id}', async (req, res) => updateUser(await app)(req, res))
-server.get('/webhook/event-added', (req, res) => {
-  console.log(req.body)
-  res.send(204)
-})
+server.post('/api/users', async (req, res) => registerUser(await app)(req, res))
+server.put('/api/users/login', async (req, res) => updateUser(await app)(req, res))
 server.listen(server.get('port'), () => {
   console.log(
     '  App is running at http://localhost:%d in %s mode',

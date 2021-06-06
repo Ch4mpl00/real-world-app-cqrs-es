@@ -9,7 +9,7 @@ import {
   updateUserDataSchema
 } from '@components/user/command/commands'
 import { assert } from '@lib/common'
-// import { hash } from '@lib/crypto'
+import { hash } from '@lib/crypto'
 import { Event, registerUser, restore, updateUser, User, UserId } from '@components/user/domain'
 import { fail, ok } from '@lib/monad'
 
@@ -26,19 +26,17 @@ export const handleRegisterUserCommand = (
 
   const data = {
     ...command.data,
-    // password: await hash(command.data.password)
+    password: await hash(command.data.password)
   }
 
   const result = registerUser(command.data.id, data, {
-    emailIsBusy: await persistence.exists({ email: data.email })
+    emailAlreadyExists: await persistence.exists({ email: data.email })
   })
 
-  // console.log(await persistence.findOneBy({ email: data.email }))
   if (result.ok) {
     await eventStore.commitEvent('user', result.value)
-  } else {
-    // console.log(result.error)
   }
+
   return result
 }
 
@@ -84,6 +82,7 @@ export const handleSendConfirmationEmailCommand = (
   persistence: ReadPersistence<UserProjection>
 ) => async (command: RegisterUser): Promise<void> => {
   assert(command.data, sendEmailConfirmationSchema)
+  console.log(`Sent confirmation email to ${command.data.email}`)
   // create confirmation token
   // send an email
 }

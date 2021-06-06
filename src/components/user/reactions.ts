@@ -12,8 +12,5 @@ export const onEvent = (dispatch: DispatchCommand) => (event: DomainEvent) => {
     .with({ type: 'UserEmailChanged' }, async e => {
       await dispatch(createSendConfirmationEmailCommand(e.aggregateId, e.payload.newEmail))
     })
-    .with({ type: 'UserEmailChanged' }, async e => {
-      await dispatch(createSendConfirmationEmailCommand(e.aggregateId, e.payload.newEmail))
-    })
     .run()
 }

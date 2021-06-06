@@ -1,23 +1,31 @@
-import { EventStore } from '@components/common/eventStore'
-import { ReadPersistence } from '@components/common/readPersistence'
-import { UserProjection } from '@components/user/projections'
-import { handleRegisterUserCommand, handleUpdateUserCommand } from '@components/user/command/handlers'
-import { Db } from 'mongodb';
+import {
+  handleRegisterUserCommand,
+  handleSendConfirmationEmailCommand,
+  handleUpdateUserCommand
+} from '@components/user/command/handlers'
 import * as Reactions from '@components/user/reactions'
-// import * as Projections from '@components/user/projections'
-import { DispatchCommand } from '@components/common/dispatchers'
-import { Emitter } from 'mitt';
-import { DomainEvent } from '@lib/common';
+import * as Projections from '@components/user/projections'
+import { DomainEvent } from '@lib/common'
+import { Context } from '../../composition/ctx'
+import { loadEventsToProjection } from '@components/user/queries';
 
-export default {
-  handlers: (eventStore: EventStore, persistence: ReadPersistence<UserProjection>) => {
-    return {
-      handleRegisterUserCommand: handleRegisterUserCommand(eventStore, persistence),
-      handleUpdateUserCommand: handleUpdateUserCommand(eventStore, persistence),
+export default (ctx: Context) => {
+  const handlers = {
+    handleRegisterUserCommand: handleRegisterUserCommand(ctx.services.eventStore, ctx.services.readPersistence('users')),
+    handleUpdateUserCommand: handleUpdateUserCommand(ctx.services.eventStore, ctx.services.readPersistence('users')),
+    handleSendConfirmationEmailCommand: handleSendConfirmationEmailCommand(ctx.services.eventStore, ctx.services.readPersistence('users')),
+  }
+
+  const onEvent = async (event: DomainEvent) => {
+    await Projections.onEvent(ctx.services.db)(event)
+    await Reactions.onEvent(ctx.bus.createDispatcher(handlers))(event)
+  }
+
+  return {
+    handlers,
+    onEvent,
+    queries: {
+      loadUserProjection: loadEventsToProjection(ctx.services.eventStore)
     }
-  },
-  onEvent: (persistence: Db, dispatch: DispatchCommand, emitter: Emitter) => (event: DomainEvent) => [
-    () => Reactions.onEvent(dispatch)(event),
-    // () => Projections.onEvent(persistence, emitter)(event)
-  ]
+  }
 }

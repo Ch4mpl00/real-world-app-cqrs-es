@@ -15,3 +15,6 @@ export type DomainEvent = {
   aggregateId: string,
   payload: any
 }
+
+type AnyFunc = (...args: any) => any;
+export type ReturnTypeRecursive<T extends AnyFunc> = T extends AnyFunc ? ReturnTypeRecursive<ReturnType<T>> : T;

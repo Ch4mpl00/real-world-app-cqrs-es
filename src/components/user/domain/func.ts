@@ -17,7 +17,7 @@ import {
 } from '@components/user/domain'
 
 type UserRegistrationContext = {
-  readonly emailIsBusy: boolean
+  readonly emailAlreadyExists: boolean
 }
 
 export const registerUser = (
@@ -25,11 +25,12 @@ export const registerUser = (
   data: RegisterUserData,
   context: UserRegistrationContext
 ): Result<UserRegistered, EmailAlreadyExists> => {
-  if (context.emailIsBusy) {
+  if (context.emailAlreadyExists) {
     return fail({ type: 'EmailAlreadyExists', email: data.email })
   }
 
   return ok({
+    aggregate: 'user',
     type: 'UserRegistered',
     aggregateId: id,
     payload: data
@@ -64,6 +65,7 @@ export const updateUser = (
 export const followUser = (user: User, userIdToFollow: UserId): Result<UserFollowed, never> => {
   return ok({
     aggregateId: user.id,
+    aggregate: 'user',
     type: 'UserFollowed',
     payload: {
       followedTo: userIdToFollow
@@ -74,6 +76,7 @@ export const followUser = (user: User, userIdToFollow: UserId): Result<UserFollo
 export const unfollowUser = (user: User, userIdToUnfollow: UserId): Result<UserUnfollowed, never> => {
   return ok({
     aggregateId: user.id,
+    aggregate: 'user',
     type: 'UserUnfollowed',
     payload: {
       unfollowedFrom: userIdToUnfollow
@@ -103,6 +106,7 @@ export const apply = (user: User) => (event: Event): User => {
       return {
         ...user,
         email: event.payload.newEmail
+        // TODO: set emailConfirmed property to false
       }
     case 'UserProfileUpdated':
       return {
