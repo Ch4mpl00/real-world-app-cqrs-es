@@ -1,7 +1,6 @@
 import { eventStore } from '@components/common/eventStore';
 import { MongoClient } from 'mongodb';
 import mitt from 'mitt';
-import { persistence } from '@components/common/readPersistence';
 import { createCommandDispatcher } from '@components/common/dispatchers';
 import dotenv from 'dotenv'
 
@@ -18,7 +17,6 @@ const registerServices = async () => {
   return {
     eventStore: _eventStore,
     emitter: emitter,
-    readPersistence: persistence(db),
     db: db,
   }
 }

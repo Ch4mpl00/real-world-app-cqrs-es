@@ -7,10 +7,31 @@ import bodyParser from 'body-parser'
 import express, { Request, Response } from 'express'
 import { createApp } from '../composition/root'
 import { registerUser, updateUser } from './user/actions'
+import jwt from 'express-jwt';
 
 const server = express()
 server.set('port', process.env.PORT || 8083)
 server.use(bodyParser.json())
+
+server.use(jwt({
+  secret: 'veryverysecret1',
+  algorithms: ['HS256'],
+  credentialsRequired: false,
+  getToken: function fromHeaderOrQuerystring (req) {
+    if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
+      return req.headers.authorization.split(' ')[1];
+    } else if (req.query && req.query.token) {
+      return req.query.token;
+    }
+    return null;
+  }
+}));
+
+server.use(function (err: Error, req: Request, res: Response, next: Function) {
+  if (err.name === 'UnauthorizedError') {
+    res.status(401).send('invalid token...');
+  }
+});
 
 function clientErrorHandler (err: Error, req: Request, res: Response, next: Function) {
   if (req.xhr) {

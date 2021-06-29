@@ -3,6 +3,7 @@ import { Emitter } from 'mitt';
 
 type Event = {
   readonly aggregateId: string
+  readonly aggregate: string
   readonly type: string
   readonly payload: any
   readonly timestamp?: number
@@ -11,6 +12,7 @@ type Event = {
 type Stream =
   | 'user'
   | 'article'
+  | string
 
 export type GetEvents = <T extends Event>(stream: Stream, id: string, fromTimestamp?: number) => Promise<ReadonlyArray<T>>
 export type CommitEvent = <T extends Event>(stream: Stream, event: T) => Promise<void>

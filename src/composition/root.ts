@@ -25,7 +25,7 @@ export const createApp = async (env: 'dev' | 'prod') => {
   return {
     handleCommand: context.bus.createDispatcher(handlers),
     user: {
-      queries: userModule.queries
+      query: userModule.readModel.query
     }
   }
 }

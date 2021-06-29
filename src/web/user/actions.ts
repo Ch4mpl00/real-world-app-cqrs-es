@@ -3,7 +3,6 @@ import { App } from '../../composition/root'
 import { Request, Response } from 'express'
 import { createErrorView } from '../lib'
 import { v4 as createUuid } from 'uuid'
-import { applyOnUserProjection } from '@components/user/projections';
 import { match } from 'ts-pattern';
 
 /*
@@ -25,8 +24,11 @@ export const registerUser = (app: App) => async (req: Request, res: Response): P
   })
 
   if (result.ok) {
-    const projection = await app.user.queries.loadUserProjection(id)(applyOnUserProjection)
-    res.status(200).send(projection.profile)
+    const projection = await app.user.query.fresh(id)
+    projection.isSome
+      ? res.status(200).send(projection.some.profile)
+      : res.status(500).send('Something went wrong')
+
     return
   }
 

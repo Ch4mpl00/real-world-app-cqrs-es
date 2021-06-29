@@ -1,28 +1,37 @@
 import { User } from '@components/user/domain'
 import { Event } from '@components/user/domain'
 import { Db } from 'mongodb'
-import { DomainEvent } from '@lib/common';
+import { DomainEvent, ReturnTypeRecursive } from '@lib/common';
 import { match } from 'ts-pattern';
+import { createReadModel } from '@components/common/readPersistence';
+import { EventStore } from '@components/common/eventStore';
 
 export type UserProjection = User & {
   readonly createdAt: number
   readonly updatedAt: number
 }
 
-export const onEvent = (persistence: Db) => async (event: DomainEvent) => {
-  if (event.aggregate !== 'user') return
+export const createUserReadModel = (eventStore: EventStore, db: Db) => {
+  const model = createReadModel<UserProjection, { id?: string, email?: string }>(
+    'user',
+    eventStore,
+    db.collection('user'),
+    applyEventsOnUserProjection
+  )
 
-  await createUserProjection(persistence)(event as Event)
+  return {
+    ...model,
+    query: {
+      ...model.query,
+      // your custom queries here
+    }
+  }
 }
 
-const createUserProjection = (persistence: Db) => async (event: Event): Promise<void> => {
-  const user = (await persistence.collection('users').findOne({ id: event.aggregateId })) || {}
-  const projection = applyOnUserProjection(user, event)
-  await persistence.collection('users').updateOne({ id: projection.id }, { $set: projection }, { upsert: true })
-}
+export type UserReadModel = ReturnTypeRecursive<typeof createUserReadModel>
 
-export const applyOnUserProjection = (user: UserProjection, event: Event) => {
-  return match(event)
+export const applyEventsOnUserProjection = (user: UserProjection, event: DomainEvent) => {
+  return match(event as Event)
     .with({ type: 'UserRegistered' }, (event): UserProjection => ({
       id: event.aggregateId,
       email: event.payload.email,

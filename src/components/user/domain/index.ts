@@ -1,4 +1,4 @@
 export * from './types'
-export * from './func'
+export * from './actions'
 export * from './event'
 export * from './error'

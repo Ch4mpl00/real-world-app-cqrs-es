@@ -1,6 +1,4 @@
 import { EventStore } from '@components/common/eventStore'
-import { ReadPersistence } from '@components/common/readPersistence'
-import { UserProjection } from '@components/user/projections'
 import {
   RegisterUser,
   UpdateUser,
@@ -12,6 +10,7 @@ import { assert } from '@lib/common'
 import { hash } from '@lib/crypto'
 import { Event, registerUser, restore, updateUser, User, UserId } from '@components/user/domain'
 import { fail, ok } from '@lib/monad'
+import { UserReadModel } from '@components/user/projections';
 
 /*
 * ===========================
@@ -20,7 +19,7 @@ import { fail, ok } from '@lib/monad'
 * */
 export const handleRegisterUserCommand = (
   eventStore: EventStore,
-  persistence: ReadPersistence<UserProjection>
+  userReadModel: UserReadModel
 ) => async (command: RegisterUser) => {
   assert(command.data, registerUserDataSchema)
 
@@ -30,7 +29,7 @@ export const handleRegisterUserCommand = (
   }
 
   const result = registerUser(command.data.id, data, {
-    emailAlreadyExists: await persistence.exists({ email: data.email })
+    emailAlreadyExists: (await userReadModel.query.findOneBy({ email: data.email })).isSome
   })
 
   if (result.ok) {
@@ -47,14 +46,14 @@ export const handleRegisterUserCommand = (
 * */
 export const handleUpdateUserCommand = (
   eventStore: EventStore,
-  persistence: ReadPersistence<UserProjection>
+  userReadModel: UserReadModel
 ) => async (command: UpdateUser) => {
   assert(command.data, updateUserDataSchema)
 
   const user = await restoreUserState(eventStore, command.data.id)
 
   const result = updateUser(user, command.data, {
-    emailIsBusy: await persistence.exists({ email: command.data.email })
+    emailIsBusy: (await userReadModel.query.findOneBy({ email: command.data.email })).isSome
   })
 
   if (result.ok) {
@@ -79,7 +78,7 @@ const restoreUserState = async (eventStore: EventStore, id: UserId): Promise<Use
 * */
 export const handleSendConfirmationEmailCommand = (
   eventStore: EventStore,
-  persistence: ReadPersistence<UserProjection>
+  userReadModel: UserReadModel
 ) => async (command: RegisterUser): Promise<void> => {
   assert(command.data, sendEmailConfirmationSchema)
   console.log(`Sent confirmation email to ${command.data.email}`)

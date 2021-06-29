@@ -1,31 +1,60 @@
-import { None, Option, Some } from '@lib/monad'
-import { Db, FilterQuery } from 'mongodb';
+import { None, Some } from '@lib/monad'
+import { Collection } from 'mongodb'
+import { EventStore } from '@components/common/eventStore'
+import { DomainEvent } from '@lib/common'
 
-export type ReadPersistence<T> = {
-  readonly findOne: (id: string) => Promise<Option<T>>
-  readonly findOneBy: <Y extends {}>(findBy: Y) => Promise<Option<T>>
-  readonly exists: <Y extends {}>(findBy: Y) => Promise<boolean>
-  // readonly find: <Y extends {}>(findBy: Y) => Promise<ReadonlyArray<T>>
-}
+export const createReadModel = <T, CanFindBy extends object> (
+  aggregateName: string,
+  eventStore: EventStore,
+  collection: Collection,
+  reducer: (state: T, event: DomainEvent) => T
+) => ({
+  onEvent: async (event: DomainEvent) => {
+    if (event.aggregate !== aggregateName) return
 
-export const persistence =  (db: Db) => <T>(collection: string): ReadPersistence<T> => {
-  const findOneBy = async (findBy: FilterQuery<any>) => {
-    const result = await db.collection(collection).findOne(findBy) as unknown as T
-    if (result) {
-      return Some(result)
+    const aggregate = await collection.findOne<T>({ uuid: event.aggregateId }) || ({} as T)
+    const newState = reducer(aggregate, event)
+    await collection.updateOne({ id: event.aggregateId }, { $set: newState }, { upsert: true })
+    // TODO: deletions
+    // TODO: projection versioning
+  },
+
+  refresh: async (id: string) => {
+    const events = await eventStore.getEvents(aggregateName, id)
+    if (events.length == 0) {
+      return
     }
 
-    return None()
-  }
+    const newState = events.reduce((state, event) => reducer(state, event), {} as T)
+    await collection.updateOne({ id }, { $set: newState }, { upsert: true })
+    // TODO: deletions
+    // TODO: projection versioning
+  },
 
-  const findOne = async (id: string) => findOneBy({ id })
-  const exists = async (findBy: FilterQuery<any>) => {
-    return (await findOneBy(findBy)).isSome
-  }
+  query: {
+    fresh: async (id: string) => {
+      const events = await eventStore.getEvents(aggregateName, id)
+      if (events.length == 0) {
+        return None()
+      }
 
-  return {
-    findOne,
-    findOneBy,
-    exists
+      return Some(
+        events.reduce((state, event) => reducer(state, event), {} as T)
+      )
+    },
+
+    findOneBy: async (findBy: CanFindBy) => {
+      const result = await collection.findOne<T>(findBy)
+      if (result) {
+        return Some(result)
+      }
+
+      return None()
+    },
+
+    findManyBy: async (findBy: CanFindBy) => {
+      return await collection.find<T>(findBy, {}).toArray()
+    }
   }
-}
+})
+
