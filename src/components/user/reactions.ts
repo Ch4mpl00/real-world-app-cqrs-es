@@ -1,8 +1,8 @@
 import { match } from 'ts-pattern'
 import { DispatchCommand } from '@components/common/dispatchers'
 import { createSendConfirmationEmailCommand } from '@components/user/command/commands'
-import { DomainEvent } from '@lib/common';
-import { Event } from '@components/user/domain';
+import { DomainEvent } from '@lib/common'
+import { Event } from '@components/user/domain'
 
 export const onEvent = (dispatch: DispatchCommand) => (event: DomainEvent) => {
   match(event as Event)

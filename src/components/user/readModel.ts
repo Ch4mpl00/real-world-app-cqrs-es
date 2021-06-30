@@ -12,7 +12,8 @@ export type UserProjection = User & {
 }
 
 export const createUserReadModel = (eventStore: EventStore, db: Db) => {
-  const model = createReadModel<UserProjection, { id?: string, email?: string }>(
+  type FilterByFields = { id?: string, email?: string }
+  const model = createReadModel<UserProjection, FilterByFields>(
     'user',
     eventStore,
     db.collection('user'),

@@ -10,7 +10,7 @@ import { assert } from '@lib/common'
 import { hash } from '@lib/crypto'
 import { Event, registerUser, restore, updateUser, User, UserId } from '@components/user/domain'
 import { fail, ok } from '@lib/monad'
-import { UserReadModel } from '@components/user/projections';
+import { UserReadModel } from '@components/user/readModel';
 
 /*
 * ===========================

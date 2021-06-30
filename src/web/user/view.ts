@@ -1,4 +1,4 @@
-import { UserProjection } from '@components/user/projections'
+import { UserProjection } from '@components/user/readModel'
 
 export const createUserView = (user: UserProjection) => ({
   user: {

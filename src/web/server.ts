@@ -6,8 +6,9 @@ import 'module-alias/register'
 import bodyParser from 'body-parser'
 import express, { Request, Response } from 'express'
 import { createApp } from '../composition/root'
-import { registerUser, updateUser } from './user/actions'
+import { registerUser } from './user/actions'
 import jwt from 'express-jwt';
+import { login } from './auth/actions';
 
 const server = express()
 server.set('port', process.env.PORT || 8083)
@@ -46,7 +47,7 @@ server.use(clientErrorHandler)
 const app = createApp('dev')
 
 server.post('/api/users', async (req, res) => registerUser(await app)(req, res))
-server.put('/api/users/login', async (req, res) => updateUser(await app)(req, res))
+server.post('/api/users/login', async (req, res) => login(await app)(req, res))
 server.listen(server.get('port'), () => {
   console.log(
     '  App is running at http://localhost:%d in %s mode',

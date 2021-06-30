@@ -37,10 +37,6 @@ export const registerUser = (app: App) => async (req: Request, res: Response): P
     .exhaustive()
 }
 
-export const login = (app: App) => async (req: Request, res: Response): Promise<void> => {
-
-}
-
 /*
 * ==================
 * Update user action

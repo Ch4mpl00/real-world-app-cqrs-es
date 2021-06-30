@@ -6,7 +6,7 @@ import {
 import * as Reactions from '@components/user/reactions'
 import { DomainEvent } from '@lib/common'
 import { Context } from '../../composition/ctx'
-import { createUserReadModel } from '@components/user/projections';
+import { createUserReadModel } from '@components/user/readModel';
 
 export default (ctx: Context) => {
 
