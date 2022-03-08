@@ -10,12 +10,8 @@ export const createApp = async (env: 'dev' | 'prod') => {
   const userModule = await UserModule(context)
   const authModule = await AuthModule(context)
 
-  const handlers = {
-    ...userModule.handlers
-  }
-
   const listeners = [
-    userModule.onEvent,
+    userModule.onEvent(userModule.command),
     authModule.onEvent,
   ]
 
@@ -26,9 +22,9 @@ export const createApp = async (env: 'dev' | 'prod') => {
   })
 
   return {
-    handleCommand: context.bus.createDispatcher(handlers),
     user: {
-      query: userModule.readModel.query
+      query: userModule.readModel.query,
+      command: userModule.command,
     },
     auth: {
       query: authModule.readModel.query

@@ -15,7 +15,7 @@ server.set('port', process.env.PORT || 8083)
 server.use(bodyParser.json())
 
 server.use(jwt({
-  secret: 'veryverysecret1',
+  secret: 'secret',
   algorithms: ['HS256'],
   credentialsRequired: false,
   getToken: function fromHeaderOrQuerystring (req) {
@@ -48,6 +48,7 @@ const app = createApp('dev')
 
 server.post('/api/users', async (req, res) => registerUser(await app)(req, res))
 server.post('/api/users/login', async (req, res) => login(await app)(req, res))
+
 server.listen(server.get('port'), () => {
   console.log(
     '  App is running at http://localhost:%d in %s mode',

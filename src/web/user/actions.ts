@@ -18,7 +18,7 @@ export const registerUser = (app: App) => async (req: Request, res: Response): P
   }
 
   const id = createUuid()
-  const result = await app.handleCommand({
+  const result = await app.user.command.registerUser({
     type: 'RegisterUser',
     data: { ...data.value, id }
   })
@@ -50,7 +50,7 @@ export const updateUser = (app: App) => async (req: Request, res: Response) => {
     return
   }
 
-  const result = await app.handleCommand({
+  const result = await app.user.command.updateUser({
     type: 'UpdateUser',
     data: data.value
   })

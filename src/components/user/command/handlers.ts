@@ -4,20 +4,24 @@ import {
   UpdateUser,
   registerUserDataSchema,
   sendEmailConfirmationSchema,
-  updateUserDataSchema
+  updateUserDataSchema, SendConfirmationEmail
 } from '@components/user/command/commands'
 import { assert } from '@lib/common'
 import { hash } from '@lib/crypto'
-import { Event, registerUser, restore, updateUser, User, UserId } from '@components/user/domain'
+import * as UserDomain from '@components/user/domain'
 import { fail, ok } from '@lib/monad'
 import { UserReadModel } from '@components/user/readModel';
 
+const restoreUserState = async (eventStore: EventStore, id: UserDomain.UserId): Promise<UserDomain.User> => {
+  return await eventStore.getEvents<UserDomain.Event>('user', id).then(e => UserDomain.restore(id, e))
+}
+
 /*
 * ===========================
-* Handle RegisterUser command
+* Register user
 * ===========================
 * */
-export const handleRegisterUserCommand = (
+export const registerUser = (
   eventStore: EventStore,
   userReadModel: UserReadModel
 ) => async (command: RegisterUser) => {
@@ -28,7 +32,7 @@ export const handleRegisterUserCommand = (
     password: await hash(command.data.password)
   }
 
-  const result = registerUser(command.data.id, data, {
+  const result = UserDomain.registerUser(command.data.id, data, {
     emailAlreadyExists: (await userReadModel.query.findOneBy({ email: data.email })).isSome
   })
 
@@ -44,7 +48,7 @@ export const handleRegisterUserCommand = (
 * Handle UpdateUser command
 * =========================
 * */
-export const handleUpdateUserCommand = (
+export const updateUser = (
   eventStore: EventStore,
   userReadModel: UserReadModel
 ) => async (command: UpdateUser) => {
@@ -52,7 +56,7 @@ export const handleUpdateUserCommand = (
 
   const user = await restoreUserState(eventStore, command.data.id)
 
-  const result = updateUser(user, command.data, {
+  const result = UserDomain.updateUser(user, command.data, {
     emailIsBusy: (await userReadModel.query.findOneBy({ email: command.data.email })).isSome
   })
 
@@ -67,19 +71,15 @@ export const handleUpdateUserCommand = (
   return fail(result.error)
 }
 
-const restoreUserState = async (eventStore: EventStore, id: UserId): Promise<User> => {
-  return await eventStore.getEvents<Event>('user', id).then(e => restore(id, e))
-}
-
 /*
 * ====================================
 * Handle SendConfirmationEmail command
 * ====================================
 * */
-export const handleSendConfirmationEmailCommand = (
+export const sendConfirmationEmail = (
   eventStore: EventStore,
   userReadModel: UserReadModel
-) => async (command: RegisterUser): Promise<void> => {
+) => async (command: SendConfirmationEmail): Promise<void> => {
   assert(command.data, sendEmailConfirmationSchema)
   console.log(`Sent confirmation email to ${command.data.email}`)
   // create confirmation token

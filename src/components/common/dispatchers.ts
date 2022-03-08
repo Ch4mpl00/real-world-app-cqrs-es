@@ -1,16 +1,16 @@
 import { RegisterUser, SendConfirmationEmail, UpdateUser } from '@components/user/command/commands'
 import {
-  handleRegisterUserCommand, handleSendConfirmationEmailCommand,
-  handleUpdateUserCommand
+  registerUser, sendConfirmationEmail,
+  updateUser
 } from '@components/user/command/handlers';
 import { ReturnTypeRecursive } from '@lib/common';
 
 type Handlers = { readonly [key: string]: (command: any) => any }
 
 export const createCommandDispatcher = (handlers: Handlers) => {
-  function handleCommand (command: RegisterUser): ReturnTypeRecursive<typeof handleRegisterUserCommand>
-  function handleCommand (command: UpdateUser): ReturnTypeRecursive<typeof handleUpdateUserCommand>
-  function handleCommand (command: SendConfirmationEmail): ReturnTypeRecursive<typeof handleSendConfirmationEmailCommand>
+  function handleCommand (command: RegisterUser): ReturnTypeRecursive<typeof registerUser>
+  function handleCommand (command: UpdateUser): ReturnTypeRecursive<typeof updateUser>
+  function handleCommand (command: SendConfirmationEmail): ReturnTypeRecursive<typeof sendConfirmationEmail>
 
   function handleCommand (command: any): any {
     const key = `handle${command.type}Command`

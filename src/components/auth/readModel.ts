@@ -35,7 +35,7 @@ export const createAuthReadModel = (eventStore: EventStore, db: Db) => {
         }
 
         return (await comparePassword(password, user.some.password))
-          ? Some(jwt.sign({ userId: user.some.userId, email: user.some.email }, 'secret')) // TODO: get secret as arg
+          ? Some(jwt.sign({ userId: user.some.userId, email: user.some.email, foo: 'bar' }, 'secret')) // TODO: get secret as arg
           : None()
       }
     }
