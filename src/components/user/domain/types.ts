@@ -1,3 +1,5 @@
+import { Event } from '@components/user/domain/event';
+
 export type UserId = string
 
 export type RegisterUserData = {
@@ -22,10 +24,15 @@ export type Profile = {
   readonly image: string | null
 }
 
-export type User = {
+export type UserAggregate = {
   readonly id: string
-  readonly email: string
-  readonly password: string
-  readonly profile: Profile
-  readonly follows: ReadonlyArray<UserId>
+  readonly version: number
+  readonly type: 'user'
+  readonly state: {
+    readonly email: string
+    readonly password: string
+    readonly profile: Profile
+    readonly follows: ReadonlyArray<UserId>
+  }
+  events: Event[]
 }

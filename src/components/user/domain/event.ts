@@ -2,6 +2,8 @@ import { RegisterUserData, UpdateUserData, UserId } from '@components/user/domai
 
 export type UserRegistered = {
   readonly type: 'UserRegistered'
+  readonly version?: number
+  readonly timestamp: number
   readonly aggregate: 'user'
   readonly aggregateId: UserId,
   readonly payload: RegisterUserData
@@ -9,6 +11,8 @@ export type UserRegistered = {
 
 export type UserProfileUpdated = {
   readonly type: 'UserProfileUpdated'
+  readonly version?: number
+  readonly timestamp: number
   readonly aggregate: 'user'
   readonly aggregateId: UserId,
   readonly payload: UpdateUserData
@@ -16,6 +20,8 @@ export type UserProfileUpdated = {
 
 export type UserEmailChanged = {
   readonly type: 'UserEmailChanged'
+  readonly version?: number
+  readonly timestamp: number
   readonly aggregate: 'user'
   readonly aggregateId: UserId
   readonly payload: {
@@ -26,6 +32,8 @@ export type UserEmailChanged = {
 
 export type UserFollowed = {
   readonly type: 'UserFollowed'
+  readonly version?: number
+  readonly timestamp: number
   readonly aggregate: 'user'
   readonly aggregateId: UserId,
   readonly payload: {
@@ -35,6 +43,8 @@ export type UserFollowed = {
 
 export type UserUnfollowed = {
   readonly type: 'UserUnfollowed'
+  readonly version?: number
+  readonly timestamp: number
   readonly aggregate: 'user'
   readonly aggregateId: UserId,
   readonly payload: {
@@ -49,23 +59,26 @@ export type Event =
   | UserFollowed
   | UserUnfollowed
 
-export const createUserRegisteredEvent = (id: UserId, data: RegisterUserData): UserRegistered => ({
+export const createUserRegisteredEvent = (id: UserId, data: RegisterUserData, timestamp: number): UserRegistered => ({
   type: 'UserRegistered',
   aggregate: 'user',
   aggregateId: id,
-  payload: data
+  payload: data,
+  timestamp,
 })
 
-export const createUserProfileUpdatedEvent = (id: UserId, data: UpdateUserData): UserProfileUpdated => ({
+export const createUserProfileUpdatedEvent = (id: UserId, data: UpdateUserData, timestamp: number): UserProfileUpdated => ({
   type: 'UserProfileUpdated',
   aggregate: 'user',
   aggregateId: id,
-  payload: data
+  payload: data,
+  timestamp,
 })
 
-export const createUserEmailChangedEvent = (id: string, newEmail: string, oldEmail: string): UserEmailChanged => ({
+export const createUserEmailChangedEvent = (id: string, newEmail: string, oldEmail: string, timestamp: number): UserEmailChanged => ({
   type: 'UserEmailChanged',
   aggregate: 'user',
   aggregateId: id,
-  payload: { newEmail, oldEmail }
+  payload: { newEmail, oldEmail },
+  timestamp,
 })

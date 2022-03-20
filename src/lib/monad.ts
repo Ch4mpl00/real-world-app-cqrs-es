@@ -22,7 +22,7 @@ export const ok = <T> (val: T): Success<T> => {
   }
 }
 
-export const fail = <T> (val: T): Error<T> => {
+export const error = <T> (val: T): Error<T> => {
   return {
     type: 'Error',
     error: val,
