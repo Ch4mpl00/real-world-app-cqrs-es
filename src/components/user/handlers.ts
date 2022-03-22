@@ -9,8 +9,8 @@ import { ensure } from '@lib/common';
 import { ApiGatewayEventBody, ApiGatewayResponse } from '@lib/http';
 import { v4 } from 'uuid';
 
+export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
 
-export const registerUserHandler = middy(async (event: ApiGatewayEventBody): ApiGatewayResponse => {
   const id = event.body.id || v4();
   const result = await command.registerUser({ ...event.body, id });
 

@@ -1,18 +1,35 @@
-import { Event, UserAggregate } from '@components/user/domain';
-import { ok, Result } from '@lib/monad';
-import { v4 } from 'uuid';
+import { Event, restore, UserAggregate } from '@components/user/domain';
+import { error, ok, Result } from '@lib/monad';
+import { DocumentClient } from "aws-sdk/clients/dynamodb";
 
 export type IUserRepository = {
   readonly get: (id: string) => Promise<UserAggregate | null>
   readonly getEvents: (id: string) => Promise<Event[]>
-  readonly save: (user: UserAggregate) => Promise<Result<true, Error>>
+  readonly save: (user: UserAggregate) => Promise<Result<boolean, Error>>
 }
 
-export const createUserRepository = (): IUserRepository => ({
-  get: async () => ({ id: v4(), type: 'user', state: {}, version: 1 } as UserAggregate),
-  getEvents: async () => [],
-  save: async (user: UserAggregate) => {
-    console.log('save', JSON.stringify(user));
-    return ok(true)
-  }
+export const createDynamodbUserRepository = (client: DocumentClient, tableName: string): IUserRepository => ({
+  get: async (aggregateId: string) => client.get({
+    TableName: tableName,
+    Key: { pkey: aggregateId },
+  })
+    .promise()
+    .then(res => restore(aggregateId, res as unknown as Event[]))
+    .catch(() => null)
+  ,
+  getEvents: async (aggregateId: string) => client.get({
+    TableName: tableName,
+    Key: { pkey: aggregateId },
+  })
+    .promise()
+    .then(res => res as unknown as Event[])
+    .catch(() => [])
+  ,
+  save: async (user: UserAggregate) => client.put({
+    TableName: tableName,
+    Item: user
+  })
+    .promise()
+    .then(() => ok(true))
+    .catch((err) => error(err))
 })

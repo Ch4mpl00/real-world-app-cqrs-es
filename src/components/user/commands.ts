@@ -1,11 +1,11 @@
 import { assert } from '@lib/common'
-import { hash } from '@lib/crypto'
 import * as UserDomain from '@components/user/domain'
 import { error } from '@lib/monad'
 import { RegisterUserData, UpdateUserData, UserId } from '@components/user/domain';
 import { IUserRepository } from '@components/user/repository';
 import { IUserReadRepository } from '@components/user/readRepository';
 import Joi from 'joi';
+import bcrypt from 'bcryptjs'
 
 const registerUserDataSchema = Joi.object({
   email: Joi.string().email(),
@@ -35,7 +35,7 @@ export const createCommandHandlers = (
 
     const result = UserDomain.registerUser(data.id, {
       ...data,
-      password: await hash(data.password)
+      password: await bcrypt.hash(data.password, 10)
     }, {
       emailAlreadyExists: !!(await userReadRepository.findByEmail(data.email)),
       timestamp: new Date().getTime()
