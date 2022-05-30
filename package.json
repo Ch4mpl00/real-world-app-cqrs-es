@@ -16,6 +16,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.54.0",
     "@aws-sdk/util-dynamodb": "^3.54.0",
+    "@badrap/result": "^0.2.12",
     "@eventstore/db-client": "^1.1.1",
     "@middy/core": "^2.5.7",
     "@middy/http-error-handler": "^2.5.7",
@@ -45,7 +46,7 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.93",
+    "@types/aws-lambda": "^8.10.97",
     "@types/lodash": "^4.14.180",
     "@typescript-eslint/eslint-plugin": "^4.16.1",
     "@typescript-eslint/parser": "^4.16.1",

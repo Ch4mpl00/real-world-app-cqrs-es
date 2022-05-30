@@ -2,19 +2,20 @@ import { command, userReadRepository } from '@components/user';
 import { match } from 'ts-pattern';
 import middy from '@middy/core'
 import jsonBodyParser from '@middy/http-json-body-parser'
-import httpErrorHandler from '@middy/http-error-handler'
 import Joi from 'joi';
 import { validate } from '@lib/middy-middlewares';
 import { ensure } from '@lib/common';
 import { ApiGatewayEventBody, ApiGatewayResponse } from '@lib/http';
 import { v4 } from 'uuid';
+import { SQSEvent } from 'aws-lambda';
+import { Event } from '@components/common/events';
 
 export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
 
   const id = event.body.id || v4();
   const result = await command.registerUser({ ...event.body, id });
 
-  if (result.ok) {
+  if (result.isOk) {
     const user = ensure(await userReadRepository.find(id, true), `user with id ${id} not found`)
 
     return {
@@ -23,7 +24,7 @@ export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Pro
     };
   }
 
-  return match(result.error.type)
+  return match(result.error.name)
     .with('EmailAlreadyExists', (e) => ({
       statusCode: 422,
       body: JSON.stringify({ error: e, message: 'Email already exists' })
@@ -42,4 +43,12 @@ export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Pro
       username: Joi.string().max(60).required()
     }
   }))
-  .use(httpErrorHandler())
+
+export const onEvent = (event: SQSEvent) => {
+  const records = event.Records;
+
+  records.map(async r => {
+    const e = JSON.parse(r.body) as Event;
+    await userReadRepository.onEvent(e)
+  })
+}
