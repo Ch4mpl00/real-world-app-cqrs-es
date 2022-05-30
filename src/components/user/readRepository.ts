@@ -2,6 +2,8 @@ import { Event, Profile, UserId } from '@components/user/domain'
 import { DomainEvent } from '@lib/common';
 import { match } from 'ts-pattern';
 import { IUserRepository } from '@components/user/repository';
+import { Result } from '@badrap/result';
+import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 
 export type UserProjection = {
   readonly id: string
@@ -14,12 +16,16 @@ export type UserProjection = {
 }
 
 export type IUserReadRepository = {
-  onEvent: (event: Event) => Promise<void>
+  onEvent: (event: Event | DomainEvent) => Promise<void>
   find: (id: string, consistentRead?: boolean) => Promise<UserProjection | null>
   findByEmail: (id: string) => Promise<UserProjection | null>
 }
 
-export const createDynamoDbReadRepository = (userRepository: IUserRepository): IUserReadRepository => {
+export const createDynamoDbReadRepository = (
+  client: DocumentClient,
+  tableName: string,
+  userRepository: IUserRepository,
+): IUserReadRepository => {
 
   const find = async (id: string, consistentRead: boolean = false): Promise<UserProjection | null> => {
 
@@ -39,16 +45,23 @@ export const createDynamoDbReadRepository = (userRepository: IUserRepository): I
     return null
   }
 
-  const save = async (projection: UserProjection): Promise<void | Error> => {
-    // console.log('saving', JSON.stringify(projection))
+  const save = async (projection: UserProjection) => {
+    return client.put({
+      TableName: tableName,
+      Item: projection,
+    })
+      .promise()
+      .then(() => Result.ok(true))
+      .catch((err) => {
+        console.log(err)
+        return Result.err(err)
+      })
   }
 
-  const onEvent = async (event: Event) => {
+  const onEvent = async (event: Event | DomainEvent) => {
     if (event.aggregate !== 'user') return;
 
     const projection = await find(event.aggregateId);
-
-    if (!projection) return;
 
     await save(applyEventsOnUserProjection(projection, event))
   }
@@ -60,7 +73,9 @@ export const createDynamoDbReadRepository = (userRepository: IUserRepository): I
   }
 }
 
-export const applyEventsOnUserProjection = (user: UserProjection, event: DomainEvent) => {
+export const applyEventsOnUserProjection = (state: UserProjection | null, event: DomainEvent) => {
+  let user = state || {} as UserProjection; // TODO: initial state
+
   return match<Event, UserProjection>(event as Event)
     .with({ type: 'UserRegistered' }, (event) => ({
       id: event.aggregateId,

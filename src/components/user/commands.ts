@@ -1,11 +1,11 @@
 import { assert } from '@lib/common'
 import * as UserDomain from '@components/user/domain'
-import { error } from '@lib/monad'
 import { RegisterUserData, UpdateUserData, UserId } from '@components/user/domain';
 import { IUserRepository } from '@components/user/repository';
 import { IUserReadRepository } from '@components/user/readRepository';
 import Joi from 'joi';
 import bcrypt from 'bcryptjs'
+import { Result } from '@badrap/result';
 
 const registerUserDataSchema = Joi.object({
   email: Joi.string().email(),
@@ -41,8 +41,11 @@ export const createCommandHandlers = (
       timestamp: new Date().getTime()
     })
 
-    if (result.ok) {
-      await userRepository.save(result.value)
+    if (result.isOk) {
+      const saveResult = await userRepository.save(result.value);
+      if (saveResult.isErr) {
+        return saveResult;
+      }
     }
 
     return result
@@ -54,7 +57,7 @@ export const createCommandHandlers = (
     const user = await userRepository.get(data.id);
 
     if (!user) {
-      return error({ type: 'UserNotFound', id: data.id })
+      return Result.err({ name: 'UserNotFound', message: 'qwe', id: data.id })
     }
 
     const result = UserDomain.updateUser(user, data, {
@@ -64,7 +67,7 @@ export const createCommandHandlers = (
       timestamp: new Date().getTime()
     })
 
-    if (result.ok) {
+    if (result.isOk) {
       await userRepository.save(result.value)
     }
 

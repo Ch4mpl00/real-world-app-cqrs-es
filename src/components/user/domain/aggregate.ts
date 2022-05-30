@@ -1,4 +1,4 @@
-import { error, ok, Result } from '@lib/monad'
+import { Result } from '@badrap/result';
 import { createEmailAlreadyExistsError, createUserRegisteredEvent, EmailAlreadyExists } from '@components/user/domain'
 import {
   createUserEmailChangedEvent,
@@ -32,10 +32,10 @@ export const registerUser = (
   context: UserRegistrationContext
 ): Result<UserAggregate, EmailAlreadyExists> => {
   if (context.emailAlreadyExists) {
-    return error({ type: 'EmailAlreadyExists', email: data.email })
+    return Result.err({ name: 'EmailAlreadyExists', message: '', email: data.email })
   }
 
-  return ok(
+  return Result.ok(
     applyEvent(initialState(id), createUserRegisteredEvent(id, data, context.timestamp))
   )
 }
@@ -53,7 +53,7 @@ export const updateUser = (
   const events = [];
 
   if (data.email !== undefined) {
-    if (context.emailAlreadyExists) return error(createEmailAlreadyExistsError(data.email))
+    if (context.emailAlreadyExists) return Result.err(createEmailAlreadyExistsError(data.email))
     if (data.email !== user.state.email) {
       events.push(createUserEmailChangedEvent(user.id, data.email, user.state.email, context.timestamp))
     }
@@ -61,13 +61,13 @@ export const updateUser = (
 
   events.push(createUserProfileUpdatedEvent(user.id, data, context.timestamp))
 
-  return ok(
+  return Result.ok(
     events.reduce((u, e) => applyEvent(u, e), user)
   )
 }
 
 export const followUser = (user: UserAggregate, userIdToFollow: UserId, timestamp: number): Result<UserFollowed, never> => {
-  return ok({
+  return Result.ok({
     aggregateId: user.id,
     aggregate: 'user',
     type: 'UserFollowed',
@@ -79,7 +79,7 @@ export const followUser = (user: UserAggregate, userIdToFollow: UserId, timestam
 }
 
 export const unfollowUser = (user: UserAggregate, userIdToUnfollow: UserId, timestamp: number): Result<UserUnfollowed, never> => {
-  return ok({
+  return Result.ok({
     aggregateId: user.id,
     aggregate: 'user',
     type: 'UserUnfollowed',

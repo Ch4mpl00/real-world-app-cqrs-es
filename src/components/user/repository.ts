@@ -1,5 +1,5 @@
 import { Event, restore, UserAggregate } from '@components/user/domain';
-import { error, ok, Result } from '@lib/monad';
+import { Result } from "@badrap/result";
 import { DocumentClient } from "aws-sdk/clients/dynamodb";
 
 export type IUserRepository = {
@@ -8,28 +8,60 @@ export type IUserRepository = {
   readonly save: (user: UserAggregate) => Promise<Result<boolean, Error>>
 }
 
+const pkey = (id: string) => `user#${id}`
+
 export const createDynamodbUserRepository = (client: DocumentClient, tableName: string): IUserRepository => ({
   get: async (aggregateId: string) => client.get({
     TableName: tableName,
-    Key: { pkey: aggregateId },
+    Key: { pkey: pkey(aggregateId) },
   })
     .promise()
-    .then(res => restore(aggregateId, res as unknown as Event[]))
-    .catch(() => null)
+    .then(res => {
+      console.log('RES', JSON.stringify(res, null, 2))
+      return restore(aggregateId, res as unknown as Event[])
+    })
+    .catch((err) => {
+      console.log(err)
+      return null;
+    })
   ,
-  getEvents: async (aggregateId: string) => client.get({
+  getEvents: async (aggregateId: string) => client.query({
     TableName: tableName,
-    Key: { pkey: aggregateId },
+    ExpressionAttributeNames: {
+      "#pkey": "pkey"
+    },
+    ExpressionAttributeValues: {
+      ":pkeyValue": pkey(aggregateId),
+    },
+    KeyConditionExpression: "#pkey = :pkeyValue",
   })
     .promise()
-    .then(res => res as unknown as Event[])
-    .catch(() => [])
+    .then(res => {
+      console.log(res);
+      return res.Items as Event[]
+    })
+    .catch((err) => {
+      console.log(err)
+      return []
+    })
   ,
-  save: async (user: UserAggregate) => client.put({
-    TableName: tableName,
-    Item: user
-  })
-    .promise()
-    .then(() => ok(true))
-    .catch((err) => error(err))
+
+  save: (user: UserAggregate) => {
+    return client.transactWrite({
+      TransactItems: user.events.map(event => ({
+        Put: {
+          TableName: tableName,
+          Item: { ...event, pkey: pkey(user.id) },
+          ConditionExpression: 'attribute_not_exists(pkey)'
+        }
+      }))
+    })
+      .promise()
+      .then(() => Result.ok(true))
+      .catch((err) => {
+        console.log(err)
+        return Result.err(err)
+      })
+  }
+
 })
