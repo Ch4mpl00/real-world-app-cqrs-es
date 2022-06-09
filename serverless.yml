@@ -1,0 +1,144 @@
+service: user
+useDotenv: true
+
+plugins:
+#  - serverless-bundle
+  - serverless-tscpaths
+  - serverless-esbuild
+  - serverless-offline
+#  - serverless-plugin-typescript
+
+#  - serverless-domain-manager
+#  - serverless-plugin-warmup
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: eu-central-1
+  versionFunctions: false
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:DescribeStream
+            - dynamodb:ListStreams
+            - dynamodb:GetRecords
+            - dynamodb:GetShardIterator
+            - dynamodb:ListShards
+            - dynamodb:BatchGetItem
+          Resource:
+            - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_EVENT_LOG}"
+            - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_EVENT_LOG}/index/*"
+            - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_EVENT_LOG}/stream/*"
+            - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_USER_PROJECTION}"
+            - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_USER_PROJECTION}/index/*"
+        - Effect: Allow
+          Action:
+            - sqs:*
+          Resource:
+            - arn:aws:sqs:*
+
+  environment:
+    DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
+    DYNAMODB_TABLE_EVENT_LOG: ${env:DYNAMODB_TABLE_EVENT_LOG}
+    DYNAMODB_REGION: ${env:DYNAMODB_REGION}
+    DYNAMODB_TABLE_USER_PROJECTION: ${env:DYNAMODB_TABLE_USER_PROJECTION}
+    USERS_QUEUE_URL: https://sqs.eu-central-1.amazonaws.com/097006140970/user.fifo
+
+functions:
+  event_log_stream_listener:
+    handler: src/components/common/dynamodb-event-log-stream-listener.handler
+    events:
+      - stream:
+          type: dynamodb
+          arn: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
+          maximumRetryAttempts: 3
+          batchSize: 10
+          startingPosition: LATEST
+  register_user:
+    handler: src/components/user/handlers.registerUserHandler
+    events:
+      - http:
+          path: user/register
+          method: post
+          cors: true
+          integration: lambda-proxy
+#          authorizer: tokenAuthorizerFunc
+  on_domain_event:
+    handler: src/components/user/handlers.onEvent
+    events:
+      - sqs:
+          arn: arn:aws:sqs:eu-central-1:097006140970:user.fifo
+          batchSize: 10
+#          functionResponseType: ReportBatchItemFailures
+
+custom:
+  tscpaths:
+    tsconfigPath: tsconfig.json
+  esbuild:
+    bundle: true
+    minify: false
+
+resources:
+  Resources:
+    NewSQSQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: user.fifo
+        FifoQueue: true
+#        DeduplicationScope: messageGroup
+#        FifoThroughputLimit: perMessageGroupId
+    EventLogTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: event-log
+        AttributeDefinitions:
+          - AttributeName: pkey
+            AttributeType: S
+          - AttributeName: version
+            AttributeType: N
+        KeySchema:
+          - AttributeName: pkey
+            KeyType: HASH
+          - AttributeName: version
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+    UsersDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Delete
+      Properties:
+        TableName: user-projection
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        GlobalSecondaryIndexes:
+          - IndexName: email
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+
