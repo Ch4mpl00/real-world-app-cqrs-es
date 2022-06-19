@@ -17,7 +17,7 @@ const initialState = (id: string): UserAggregate => ({
   id,
   type: 'user',
   state: {} as UserAggregate['state'],
-  events: [],
+  newEvents: [],
   version: 0
 })
 
@@ -143,7 +143,7 @@ export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => 
     ...user,
     state,
     version,
-    events: [...user.events, { ...event, version }]
+    newEvents: [...user.newEvents, { ...event, version }]
   };
 }
 

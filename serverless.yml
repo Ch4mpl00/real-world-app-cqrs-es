@@ -51,6 +51,7 @@ provider:
     DYNAMODB_REGION: ${env:DYNAMODB_REGION}
     DYNAMODB_TABLE_USER_PROJECTION: ${env:DYNAMODB_TABLE_USER_PROJECTION}
     USERS_QUEUE_URL: https://sqs.eu-central-1.amazonaws.com/097006140970/user.fifo
+    SECRET: verysecret
 
 functions:
   event_log_stream_listener:
@@ -66,7 +67,7 @@ functions:
     handler: src/components/user/handlers.registerUserHandler
     events:
       - http:
-          path: user/register
+          path: users
           method: post
           cors: true
           integration: lambda-proxy

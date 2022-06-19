@@ -9,18 +9,20 @@ import { ApiGatewayEventBody, ApiGatewayResponse } from '@lib/http';
 import { v4 } from 'uuid';
 import { SQSEvent } from 'aws-lambda';
 import { Event } from '@components/common/events';
+import { sign } from '@lib/jwt';
 
 export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
 
   const id = event.body.id || v4();
-  const result = await command.registerUser({ ...event.body, id });
+  const result = await command.registerUser({ ...event.body.user, id });
 
   if (result.isOk) {
     const user = ensure(await userReadRepository.find(id, true), `user with id ${id} not found`)
+    const token = sign(user)
 
     return {
       statusCode: 201,
-      body: JSON.stringify(user)
+      body: JSON.stringify({ user: { ...user, token } })
     };
   }
 
@@ -37,10 +39,12 @@ export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Pro
   .use(jsonBodyParser())
   .use(validate({
     body: {
-      id: Joi.string().optional(),
-      email: Joi.string().email().required(),
-      password: Joi.string().min(6).max(60).required(),
-      username: Joi.string().max(60).required()
+      user: Joi.object({
+        id: Joi.string().optional(),
+        email: Joi.string().email().required(),
+        password: Joi.string().min(6).max(60).required(),
+        username: Joi.string().max(60).required()
+      }),
     }
   }))
 

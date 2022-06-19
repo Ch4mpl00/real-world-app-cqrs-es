@@ -43,12 +43,11 @@ export const createDynamodbUserRepository = (client: DocumentClient, tableName: 
     .catch((err) => {
       console.log(err)
       return []
-    })
-  ,
+    }),
 
   save: (user: UserAggregate) => {
     return client.transactWrite({
-      TransactItems: user.events.map(event => ({
+      TransactItems: user.newEvents.map(event => ({
         Put: {
           TableName: tableName,
           Item: { ...event, pkey: pkey(user.id) },

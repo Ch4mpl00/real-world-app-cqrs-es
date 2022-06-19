@@ -1,5 +1,5 @@
-import { Event, Profile, UserId } from '@components/user/domain'
-import { DomainEvent } from '@lib/common';
+import { Event, UserId } from '@components/user/domain'
+import { DomainEvent, ensure } from '@lib/common';
 import { match } from 'ts-pattern';
 import { IUserRepository } from '@components/user/repository';
 import { Result } from '@badrap/result';
@@ -8,7 +8,9 @@ import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 export type UserProjection = {
   readonly id: string
   readonly email: string
-  readonly profile: Profile
+  readonly username: string
+  readonly bio: string
+  readonly image: string | null
   readonly follows: ReadonlyArray<UserId>
   readonly createdAt: number
   readonly updatedAt: number
@@ -55,7 +57,8 @@ export const createDynamoDbReadRepository = (
       },
     })
       .promise()
-      .then(res => res as UserProjection | null)
+      .then(res => res.Items?.pop() as UserProjection | null)
+      .catch(() => null)
   }
 
   const save = async (projection: UserProjection) => {
@@ -92,42 +95,38 @@ export const applyEventsOnUserProjection = (state: UserProjection | null, event:
       id: event.aggregateId,
       email: event.payload.email,
       follows: [],
-      profile: {
-        bio: '',
-        image: null,
-        username: event.payload.username
-      },
+      bio: '',
+      image: null,
+      username: event.payload.username,
       createdAt: event.timestamp,
       updatedAt: event.timestamp,
-      version: event.version!
+      version: ensure(event.version, `event.version required`)
     }))
     .with({ type: 'UserEmailChanged' }, (event) => ({
       ...user,
       email: event.payload.newEmail,
       updatedAt: event.timestamp,
-      version: event.version!
+      version: ensure(event.version, `event.version required`)
     }))
     .with({ type: 'UserProfileUpdated' }, (event) => ({
       ...user,
       updatedAt: event.timestamp,
-      profile: {
-        bio: event.payload.bio ?? user.profile.bio,
-        username: event.payload.username ?? user.profile.username,
-        image: event.payload.image !== undefined ? event.payload.image : user.profile.image,
-      },
-      version: event.version!
+      bio: event.payload.bio ?? user.bio,
+      username: event.payload.username ?? user.username,
+      image: event.payload.image !== undefined ? event.payload.image : user.image,
+      version: ensure(event.version, `event.version required`)
     }))
     .with({ type: 'UserFollowed' }, (event) => ({
       ...user,
       updatedAt: event.timestamp,
       follows: [...user.follows, event.payload.followedTo],
-      version: event.version!
+      version: ensure(event.version, `event.version required`)
     }))
     .with({ type: 'UserUnfollowed' }, (event) => ({
       ...user,
       updatedAt: event.timestamp,
       follows: user.follows.filter(followedId => followedId !== event.payload.unfollowedFrom),
-      version: event.version!
+      version: ensure(event.version, `event.version required`)
     }))
     .exhaustive()
 }

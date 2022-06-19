@@ -34,5 +34,5 @@ export type UserAggregate = {
     readonly profile: Profile
     readonly follows: ReadonlyArray<UserId>
   }
-  events: Event[]
+  readonly newEvents: Event[]
 }
