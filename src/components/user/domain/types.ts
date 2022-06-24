@@ -10,7 +10,6 @@ export type RegisterUserData = {
 }
 
 export type UpdateUserData = {
-  readonly id: UserId;
   readonly username?: string;
   readonly email?: string
   readonly password?: string
@@ -35,4 +34,14 @@ export type UserAggregate = {
     readonly follows: ReadonlyArray<UserId>
   }
   readonly newEvents: Event[]
+}
+
+export type AuthorizerIncomeRequestType = {
+  headers: {
+    Authorization?: string | undefined,
+    Cookie?: string | undefined,
+    cookie?: string | undefined,
+    authorization?: string | undefined
+  },
+  methodArn: string
 }

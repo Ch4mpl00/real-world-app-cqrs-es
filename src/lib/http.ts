@@ -19,8 +19,8 @@ export type ApiGatewayResponse = Promise<APIGatewayProxyResult>;
 export type ApiGatewayEventBody<T = any> = {
   body: T;
   rawBody: string;
-  headers: Record<string, string>
-}
+  headers: Record<string, string>,
+} & EventRequestContext
 
 export type EventQuery<T> = {
   queryStringParameters: T
@@ -36,4 +36,12 @@ export type EventHeader<T> = {
 
 export type ProxyHeader = {
   authorization: string;
+}
+
+export type EventRequestContext = {
+  requestContext: {
+    authorizer: {
+      principalId: string;
+    }
+  }
 }

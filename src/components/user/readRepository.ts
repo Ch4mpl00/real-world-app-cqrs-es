@@ -14,6 +14,7 @@ export type UserProjection = {
   readonly follows: ReadonlyArray<UserId>
   readonly createdAt: number
   readonly updatedAt: number
+  readonly password: string
   readonly version: number
 }
 
@@ -41,7 +42,19 @@ export const createDynamoDbReadRepository = (
       return events.reduce((state, event) => applyEventsOnUserProjection(state, event), {} as UserProjection)
     }
 
-    return null
+    return client.query({
+      TableName: tableName,
+      KeyConditionExpression: "#id = :idValue",
+      ExpressionAttributeNames: {
+        "#id": "id"
+      },
+      ExpressionAttributeValues: {
+        ":idValue": id,
+      },
+    })
+      .promise()
+      .then(res => res.Items?.pop() as UserProjection | null)
+      .catch(() => null)
   }
 
   const findByEmail = async (email: string): Promise<UserProjection | null> => {
@@ -100,6 +113,7 @@ export const applyEventsOnUserProjection = (state: UserProjection | null, event:
       username: event.payload.username,
       createdAt: event.timestamp,
       updatedAt: event.timestamp,
+      password: event.payload.password,
       version: ensure(event.version, `event.version required`)
     }))
     .with({ type: 'UserEmailChanged' }, (event) => ({

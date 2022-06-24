@@ -9,7 +9,12 @@ import { ApiGatewayEventBody, ApiGatewayResponse } from '@lib/http';
 import { v4 } from 'uuid';
 import { SQSEvent } from 'aws-lambda';
 import { Event } from '@components/common/events';
-import { sign } from '@lib/jwt';
+import jwt from '@lib/jwt';
+import bcrypt from 'bcryptjs'
+import { UserProjection } from '@components/user/readRepository';
+import { omit } from 'lodash';
+
+const createUserView = (user: UserProjection) => omit(user, ['password', 'version'])
 
 export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
 
@@ -18,11 +23,11 @@ export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Pro
 
   if (result.isOk) {
     const user = ensure(await userReadRepository.find(id, true), `user with id ${id} not found`)
-    const token = sign(user)
+    const token = jwt.sign(user)
 
     return {
       statusCode: 201,
-      body: JSON.stringify({ user: { ...user, token } })
+      body: JSON.stringify({ user: { ...createUserView(user), token } })
     };
   }
 
@@ -47,6 +52,93 @@ export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Pro
       }),
     }
   }))
+
+
+export const updateUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
+  const id = event.requestContext.authorizer.principalId;
+  const result = await command.updateUser(id, { ...event.body.user});
+
+  if (result.isOk) {
+    const user = ensure(await userReadRepository.find(id, true), `user with id ${id} not found`)
+    const token = jwt.sign(user)
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ user: { ...createUserView(user), token } })
+    };
+  }
+
+  return match(result.error.name)
+    .with('EmailAlreadyExists', (e) => ({
+      statusCode: 422,
+      body: JSON.stringify({ error: e, message: 'Email already exists' })
+    }))
+    .with('UserNotFound', (e) => ({
+      statusCode: 422,
+      body: JSON.stringify({ error: e, message: 'User not found' })
+    }))
+    .otherwise(() => ({
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Something went wrong' })
+    }))
+})
+  .use(jsonBodyParser())
+  .use(validate({
+    body: {
+      user: Joi.object({
+        email: Joi.string().email().required().optional(),
+        password: Joi.string().min(6).max(60).required().optional(),
+        username: Joi.string().max(60).required().optional(),
+        bio: Joi.string().max(60).required().optional()
+      }),
+    }
+  }))
+
+export const loginHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
+  const credentials = event.body.user
+  const user = await userReadRepository.findByEmail(credentials.email)
+
+  if (user && (await bcrypt.compare(credentials.password, user.password))) {
+    const token = jwt.sign(user)
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ user: { ...createUserView(user), token } })
+    };
+  }
+  return {
+    statusCode: 422,
+    body: JSON.stringify({ error: 'InvalidCredentials', message: 'Wrong email or password' })
+  }
+})
+  .use(jsonBodyParser())
+  .use(validate({
+    body: {
+      user: Joi.object({
+        email: Joi.string().email().required(),
+        password: Joi.string().max(60).required(),
+      }),
+    }
+  }))
+
+
+export const getUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
+  const user = await userReadRepository.find(event.requestContext.authorizer.principalId)
+
+  if (!user) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ error: 'UserNotFound', message: 'User cannot be found' })
+    }
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ user: { ...createUserView(user), token: jwt.sign(user) } })
+  };
+})
+  .use(jsonBodyParser())
+
 
 export const onEvent = (event: SQSEvent) => {
   const records = event.Records;

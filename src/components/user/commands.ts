@@ -51,13 +51,13 @@ export const createCommandHandlers = (
     return result
   },
 
-  updateUser: async (data: UpdateUserData) => {
+  updateUser: async (id: string, data: UpdateUserData) => {
     assert(data, updateUserDataSchema)
 
-    const user = await userRepository.get(data.id);
+    const user = await userRepository.get(id);
 
     if (!user) {
-      return Result.err({ name: 'UserNotFound', message: 'qwe', id: data.id })
+      return Result.err({ name: 'UserNotFound', message: 'User not found', id })
     }
 
     const result = UserDomain.updateUser(user, data, {

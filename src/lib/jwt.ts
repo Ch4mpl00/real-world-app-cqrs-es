@@ -6,11 +6,14 @@ type Signable = {
   email: string
 }
 
-export const sign = (signable: Signable) => {
-  return jwt.sign(
+export default {
+  sign: (signable: Signable) => jwt.sign(
     signable,
     ensure(process.env.SECRET, 'process.env.SECRET required'),
     {
       expiresIn: "2h",
-    })
+    }),
+  
+  verify: (token: string) => jwt.verify(token, ensure(process.env.SECRET, 'process.env.SECRET required'))
 }
+

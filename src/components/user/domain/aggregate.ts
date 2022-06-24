@@ -52,11 +52,9 @@ export const updateUser = (
 ): Result<UserAggregate, EmailAlreadyExists> => {
   const events = [];
 
-  if (data.email !== undefined) {
+  if (data.email !== undefined && data.email !== user.state.email) {
     if (context.emailAlreadyExists) return Result.err(createEmailAlreadyExistsError(data.email))
-    if (data.email !== user.state.email) {
-      events.push(createUserEmailChangedEvent(user.id, data.email, user.state.email, context.timestamp))
-    }
+    events.push(createUserEmailChangedEvent(user.id, data.email, user.state.email, context.timestamp))
   }
 
   events.push(createUserProfileUpdatedEvent(user.id, data, context.timestamp))
@@ -133,7 +131,8 @@ export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => 
     return {
       ...user,
       state,
-      version: event.version
+      version: event.version,
+      newEvents: user.newEvents ?? []
     }
   }
 
@@ -148,5 +147,5 @@ export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => 
 }
 
 export const restore = (id: UserId, events: readonly Event[]) => {
-  return events.reduce((state, event) => applyEvent(state, event), {} as UserAggregate)
+  return events.reduce((state, event) => applyEvent(state, event), { id } as UserAggregate)
 }

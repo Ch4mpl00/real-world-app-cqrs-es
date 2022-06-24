@@ -10,22 +10,9 @@ export type IUserRepository = {
 
 const pkey = (id: string) => `user#${id}`
 
-export const createDynamodbUserRepository = (client: DocumentClient, tableName: string): IUserRepository => ({
-  get: async (aggregateId: string) => client.get({
-    TableName: tableName,
-    Key: { pkey: pkey(aggregateId) },
-  })
-    .promise()
-    .then(res => {
-      console.log('RES', JSON.stringify(res, null, 2))
-      return restore(aggregateId, res as unknown as Event[])
-    })
-    .catch((err) => {
-      console.log(err)
-      return null;
-    })
-  ,
-  getEvents: async (aggregateId: string) => client.query({
+export const createDynamodbUserRepository = (client: DocumentClient, tableName: string): IUserRepository => {
+
+  const getEvents = async (aggregateId: string) => client.query({
     TableName: tableName,
     ExpressionAttributeNames: {
       "#pkey": "pkey"
@@ -43,9 +30,19 @@ export const createDynamodbUserRepository = (client: DocumentClient, tableName: 
     .catch((err) => {
       console.log(err)
       return []
-    }),
+    })
 
-  save: (user: UserAggregate) => {
+  const get = async (aggregateId: string) => getEvents(aggregateId)
+    .then(res => {
+      console.log('RES', JSON.stringify(res, null, 2))
+      return restore(aggregateId, res as unknown as Event[])
+    })
+    .catch((err) => {
+      console.log(err)
+      return null;
+    })
+
+  const save = (user: UserAggregate) => {
     return client.transactWrite({
       TransactItems: user.newEvents.map(event => ({
         Put: {
@@ -63,4 +60,8 @@ export const createDynamodbUserRepository = (client: DocumentClient, tableName: 
       })
   }
 
-})
+  return {
+    get, getEvents, save
+  }
+
+}

@@ -2,13 +2,9 @@ service: user
 useDotenv: true
 
 plugins:
-#  - serverless-bundle
   - serverless-tscpaths
   - serverless-esbuild
   - serverless-offline
-#  - serverless-plugin-typescript
-
-#  - serverless-domain-manager
 #  - serverless-plugin-warmup
 
 provider:
@@ -44,7 +40,6 @@ provider:
             - sqs:*
           Resource:
             - arn:aws:sqs:*
-
   environment:
     DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
     DYNAMODB_TABLE_EVENT_LOG: ${env:DYNAMODB_TABLE_EVENT_LOG}
@@ -54,6 +49,8 @@ provider:
     SECRET: verysecret
 
 functions:
+  tokenAuthorizer:
+    handler: src/components/common/authorizer.tokenAuthorizer
   event_log_stream_listener:
     handler: src/components/common/dynamodb-event-log-stream-listener.handler
     events:
@@ -71,7 +68,40 @@ functions:
           method: post
           cors: true
           integration: lambda-proxy
+#          authorizer: tokenAuthorizer
+  update_current_user:
+    handler: src/components/user/handlers.updateUserHandler
+    events:
+      - http:
+          path: user
+          method: put
+          cors: true
+          integration: lambda-proxy
+          authorizer:
+            name: tokenAuthorizer
+            identitySource: method.request.header.Authorization
+            type: token
+  login:
+    handler: src/components/user/handlers.loginHandler
+    events:
+      - http:
+          path: users/login
+          method: post
+          cors: true
+          integration: lambda-proxy
 #          authorizer: tokenAuthorizerFunc
+  get_user:
+    handler: src/components/user/handlers.getUserHandler
+    events:
+      - http:
+          path: user
+          method: get
+          cors: true
+          integration: lambda-proxy
+          authorizer:
+            name: tokenAuthorizer
+            identitySource: method.request.header.Authorization
+            type: token
   on_domain_event:
     handler: src/components/user/handlers.onEvent
     events:
