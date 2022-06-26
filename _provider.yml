@@ -1,0 +1,39 @@
+name: aws
+runtime: nodejs14.x
+region: eu-central-1
+versionFunctions: false
+iam:
+  role:
+    statements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+          - dynamodb:UpdateItem
+          - dynamodb:DeleteItem
+          - dynamodb:DescribeStream
+          - dynamodb:ListStreams
+          - dynamodb:GetRecords
+          - dynamodb:GetShardIterator
+          - dynamodb:ListShards
+          - dynamodb:BatchGetItem
+        Resource:
+          - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_EVENT_LOG}"
+          - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_EVENT_LOG}/index/*"
+          - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_EVENT_LOG}/stream/*"
+          - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_USER_PROJECTION}"
+          - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:DYNAMODB_TABLE_USER_PROJECTION}/index/*"
+      - Effect: Allow
+        Action:
+          - sqs:*
+        Resource:
+          - arn:aws:sqs:*
+environment:
+  DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
+  DYNAMODB_TABLE_EVENT_LOG: ${env:DYNAMODB_TABLE_EVENT_LOG}
+  DYNAMODB_REGION: ${env:DYNAMODB_REGION}
+  DYNAMODB_TABLE_USER_PROJECTION: ${env:DYNAMODB_TABLE_USER_PROJECTION}
+  USERS_QUEUE_URL: https://sqs.eu-central-1.amazonaws.com/097006140970/user.fifo
+  SECRET: verysecret

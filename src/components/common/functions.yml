@@ -1,0 +1,13 @@
+tokenAuthorizer:
+  handler: src/components/common/authorizer.tokenAuthorizer
+tokenOrGuestAuthorizer:
+  handler: src/components/common/authorizer.tokenOrGuestAuthorizer
+event_log_stream_listener:
+  handler: src/components/common/dynamodb-event-log-stream-listener.handler
+  events:
+    - stream:
+        type: dynamodb
+        arn: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
+        maximumRetryAttempts: 3
+        batchSize: 10
+        startingPosition: LATEST

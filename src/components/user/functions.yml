@@ -1,0 +1,85 @@
+register_user:
+  handler: src/components/user/handlers.registerUserHandler
+  events:
+    - http:
+        path: users
+        method: post
+        cors: true
+        integration: lambda-proxy
+#          authorizer: tokenAuthorizer
+update_current_user:
+  handler: src/components/user/handlers.updateUserHandler
+  events:
+    - http:
+        path: user
+        method: put
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenAuthorizer
+          identitySource: method.request.header.Authorization
+          type: token
+login:
+  handler: src/components/user/handlers.loginHandler
+  events:
+    - http:
+        path: users/login
+        method: post
+        cors: true
+        integration: lambda-proxy
+#          authorizer: tokenAuthorizerFunc
+get_user:
+  handler: src/components/user/handlers.getCurrentUserHandler
+  events:
+    - http:
+        path: user
+        method: get
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenAuthorizer
+          identitySource: method.request.header.Authorization
+          type: token
+get_user_profile:
+  handler: src/components/user/handlers.getUserProfileHandler
+  events:
+    - http:
+        path: profiles/{username}
+        method: get
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenOrGuestAuthorizer
+          identitySource: method.request.header.Authorization
+          type: token
+follow_user:
+  handler: src/components/user/handlers.followUserHandler
+  events:
+    - http:
+        path: profiles/{username}/follow
+        method: post
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenAuthorizer
+          identitySource: method.request.header.Authorization
+          type: token
+unfollow_user:
+  handler: src/components/user/handlers.unfollowUserHandler
+  events:
+    - http:
+        path: profiles/{username}/follow
+        method: delete
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenAuthorizer
+          identitySource: method.request.header.Authorization
+          type: token
+on_domain_event:
+  handler: src/components/user/handlers.onEvent
+  events:
+    - sqs:
+        arn: arn:aws:sqs:eu-central-1:097006140970:user.fifo
+        batchSize: 10
+#          functionResponseType: ReportBatchItemFailures
