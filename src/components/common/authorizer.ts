@@ -2,10 +2,11 @@ import jwt from '@lib/jwt'
 import { ensure } from '@lib/common';
 import { APIGatewayTokenAuthorizerEvent } from 'aws-lambda/trigger/api-gateway-authorizer';
 import { userReadRepository } from '@components/user';
+import { v4 } from 'uuid'
 
-const generatePolicy = (sub: string, effect: string, context: Record<string, any>) => {
+const generatePolicy = (userId: string, effect: string, context: Record<string, any>) => {
   return {
-    principalId: sub,
+    principalId: userId,
     context,
     policyDocument: {
       Version: '2012-10-17',
@@ -21,14 +22,35 @@ const generatePolicy = (sub: string, effect: string, context: Record<string, any
 };
 
 
-export const generateAllowPolicy = (sub: string, context: Record<string, any>): Record<string, any> => generatePolicy(sub, 'Allow', context);
-export const extractToken = (authorization?: string) => authorization?.split(' ').pop();
+const generateAllowPolicy = (userId: string, context: Record<string, any>): Record<string, any> => generatePolicy(userId, 'Allow', context);
+const extractToken = (authorization?: string) => authorization?.split(' ').pop();
 
 export const tokenAuthorizer = async (event: APIGatewayTokenAuthorizerEvent) => {
   const token = extractToken(event.authorizationToken)
 
   if (!token) {
     throw new Error('NotAuthorized')
+  }
+
+  const decodedToken = jwt.verify(token) as any // TODO: remove any
+
+  const user = userReadRepository.find(decodedToken.id);
+
+  if (!user) {
+    throw new Error('NotAuthorized')
+  }
+
+  return generateAllowPolicy(ensure(decodedToken.id, 'Token must have an ID'), {
+    id: decodedToken.id,
+    email: decodedToken.email,
+  });
+};
+
+export const tokenOrGuestAuthorizer = async (event: APIGatewayTokenAuthorizerEvent) => {
+  const token = extractToken(event.authorizationToken)
+
+  if (!token) {
+    return generateAllowPolicy(v4(), {});
   }
 
   const decodedToken = jwt.verify(token) as any // TODO: remove any

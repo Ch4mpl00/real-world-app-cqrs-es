@@ -51,6 +51,8 @@ provider:
 functions:
   tokenAuthorizer:
     handler: src/components/common/authorizer.tokenAuthorizer
+  tokenOrGuestAuthorizer:
+    handler: src/components/common/authorizer.tokenOrGuestAuthorizer
   event_log_stream_listener:
     handler: src/components/common/dynamodb-event-log-stream-listener.handler
     events:
@@ -91,11 +93,47 @@ functions:
           integration: lambda-proxy
 #          authorizer: tokenAuthorizerFunc
   get_user:
-    handler: src/components/user/handlers.getUserHandler
+    handler: src/components/user/handlers.getCurrentUserHandler
     events:
       - http:
           path: user
           method: get
+          cors: true
+          integration: lambda-proxy
+          authorizer:
+            name: tokenAuthorizer
+            identitySource: method.request.header.Authorization
+            type: token
+  get_user_profile:
+    handler: src/components/user/handlers.getUserProfileHandler
+    events:
+      - http:
+          path: profiles/{username}
+          method: get
+          cors: true
+          integration: lambda-proxy
+          authorizer:
+            name: tokenOrGuestAuthorizer
+            identitySource: method.request.header.Authorization
+            type: token
+  follow_user:
+    handler: src/components/user/handlers.followUserHandler
+    events:
+      - http:
+          path: profiles/{username}/follow
+          method: post
+          cors: true
+          integration: lambda-proxy
+          authorizer:
+            name: tokenAuthorizer
+            identitySource: method.request.header.Authorization
+            type: token
+  unfollow_user:
+    handler: src/components/user/handlers.unfollowUserHandler
+    events:
+      - http:
+          path: profiles/{username}/follow
+          method: delete
           cors: true
           integration: lambda-proxy
           authorizer:
@@ -156,6 +194,8 @@ resources:
             AttributeType: S
           - AttributeName: email
             AttributeType: S
+          - AttributeName: username
+            AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
@@ -167,6 +207,15 @@ resources:
             KeySchema:
               - AttributeName: email
                 KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: username
+            KeySchema:
+                - AttributeName: username
+                  KeyType: HASH
             Projection:
               ProjectionType: ALL
             ProvisionedThroughput:

@@ -1,11 +1,14 @@
 import { Result } from '@badrap/result';
-import { createEmailAlreadyExistsError, createUserRegisteredEvent, EmailAlreadyExists } from '@components/user/domain'
+import {
+  createEmailAlreadyExistsError,
+  createUserFollowedEvent,
+  createUserRegisteredEvent, createUserUnfollowedEvent,
+  EmailAlreadyExists
+} from '@components/user/domain'
 import {
   createUserEmailChangedEvent,
   createUserProfileUpdatedEvent,
   Event,
-  UserFollowed,
-  UserUnfollowed,
   UserId,
   RegisterUserData,
   UserAggregate,
@@ -64,28 +67,16 @@ export const updateUser = (
   )
 }
 
-export const followUser = (user: UserAggregate, userIdToFollow: UserId, timestamp: number): Result<UserFollowed, never> => {
-  return Result.ok({
-    aggregateId: user.id,
-    aggregate: 'user',
-    type: 'UserFollowed',
-    timestamp,
-    payload: {
-      followedTo: userIdToFollow
-    }
-  })
+export const followUser = (user: UserAggregate, followeeId: UserId, context: { timestamp: number }): Result<UserAggregate, never> => {
+  return Result.ok(
+    applyEvent(user, createUserFollowedEvent(user.id, followeeId, context.timestamp))
+  )
 }
 
-export const unfollowUser = (user: UserAggregate, userIdToUnfollow: UserId, timestamp: number): Result<UserUnfollowed, never> => {
-  return Result.ok({
-    aggregateId: user.id,
-    aggregate: 'user',
-    type: 'UserUnfollowed',
-    timestamp,
-    payload: {
-      unfollowedFrom: userIdToUnfollow
-    }
-  })
+export const unfollowUser = (user: UserAggregate, followeeId: UserId, context: { timestamp: number }): Result<UserAggregate, never> => {
+  return Result.ok(
+    applyEvent(user, createUserUnfollowedEvent(user.id, followeeId, context.timestamp))
+  )
 }
 
 export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => {
@@ -116,11 +107,11 @@ export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => 
     }))
     .with({ type: 'UserFollowed' }, (e) => ({
       ...user.state,
-      follows: [...user.state.follows, e.payload.followedTo],
+      follows: [...user.state.follows, e.payload.followeeId],
     }))
     .with({ type: 'UserUnfollowed' }, (e) => ({
       ...user.state,
-      follows: user.state.follows.filter(followedId => followedId !== e.payload.unfollowedFrom)
+      follows: user.state.follows.filter(followedId => followedId !== e.payload.followeeId)
     }))
     .exhaustive()
 

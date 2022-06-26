@@ -37,7 +37,7 @@ export type UserFollowed = {
   readonly aggregate: 'user'
   readonly aggregateId: UserId,
   readonly payload: {
-    readonly followedTo: UserId
+    readonly followeeId: UserId
   }
 }
 
@@ -48,7 +48,7 @@ export type UserUnfollowed = {
   readonly aggregate: 'user'
   readonly aggregateId: UserId,
   readonly payload: {
-    readonly unfollowedFrom: UserId
+    readonly followeeId: UserId
   }
 }
 
@@ -80,5 +80,21 @@ export const createUserEmailChangedEvent = (id: string, newEmail: string, oldEma
   aggregate: 'user',
   aggregateId: id,
   payload: { newEmail, oldEmail },
+  timestamp,
+})
+
+export const createUserFollowedEvent = (id: string, followeeId: string, timestamp: number): UserFollowed => ({
+  type: 'UserFollowed',
+  aggregate: 'user',
+  aggregateId: id,
+  payload: { followeeId },
+  timestamp,
+})
+
+export const createUserUnfollowedEvent = (id: string, followeeId: string, timestamp: number): UserUnfollowed => ({
+  type: 'UserUnfollowed',
+  aggregate: 'user',
+  aggregateId: id,
+  payload: { followeeId },
   timestamp,
 })

@@ -21,6 +21,7 @@ export type UserProjection = {
 export type IUserReadRepository = {
   onEvent: (event: Event | DomainEvent) => Promise<void>
   find: (id: string, consistentRead?: boolean) => Promise<UserProjection | null>
+  findByUsername: (username: string) => Promise<UserProjection | null>
   findByEmail: (id: string) => Promise<UserProjection | null>
   save: (projection: UserProjection) => Promise<Result<UserProjection, Error>>
 }
@@ -92,11 +93,29 @@ export const createDynamoDbReadRepository = (
     await save(applyEventsOnUserProjection(projection, event))
   }
 
+  const findByUsername = async (username: string) => {
+    return client.query({
+      TableName: tableName,
+      IndexName: 'username',
+      KeyConditionExpression: "#username = :usernameValue",
+      ExpressionAttributeNames: {
+        "#username": "username"
+      },
+      ExpressionAttributeValues: {
+        ":usernameValue": username,
+      },
+    })
+      .promise()
+      .then(res => res.Items?.pop() as UserProjection | null)
+      .catch(() => null)
+  }
+
   return {
     onEvent,
     find,
+    findByUsername,
     findByEmail,
-    save
+    save,
   }
 }
 
@@ -133,13 +152,13 @@ export const applyEventsOnUserProjection = (state: UserProjection | null, event:
     .with({ type: 'UserFollowed' }, (event) => ({
       ...user,
       updatedAt: event.timestamp,
-      follows: [...user.follows, event.payload.followedTo],
+      follows: [...user.follows, event.payload.followeeId],
       version: ensure(event.version, `event.version required`)
     }))
     .with({ type: 'UserUnfollowed' }, (event) => ({
       ...user,
       updatedAt: event.timestamp,
-      follows: user.follows.filter(followedId => followedId !== event.payload.unfollowedFrom),
+      follows: user.follows.filter(followedId => followedId !== event.payload.followeeId),
       version: ensure(event.version, `event.version required`)
     }))
     .exhaustive()

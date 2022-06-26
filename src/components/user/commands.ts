@@ -74,6 +74,48 @@ export const createCommandHandlers = (
     return result;
   },
 
+  followUser: async (followerId: string, followeeId: string) => {
+    const follower = await userRepository.get(followerId);
+    const followable = await userRepository.get(followeeId);
+
+    if (!follower) {
+      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followerId })
+    }
+
+    if (!followable) {
+      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followeeId })
+    }
+
+    const result = UserDomain.followUser(follower, followable.id, { timestamp: new Date().getTime() })
+
+    if (result.isOk) {
+      await userRepository.save(result.value)
+    }
+
+    return result
+  },
+
+  unfollowUser: async (followerId: string, followeeId: string) => {
+    const follower = await userRepository.get(followerId);
+    const followable = await userRepository.get(followeeId);
+
+    if (!follower) {
+      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followerId })
+    }
+
+    if (!followable) {
+      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followeeId })
+    }
+
+    const result = UserDomain.unfollowUser(follower, followable.id, { timestamp: new Date().getTime() })
+
+    if (result.isOk) {
+      await userRepository.save(result.value)
+    }
+
+    return result
+  },
+
   sendConfirmationEmail: async (data: { readonly id: UserId, readonly email: string }): Promise<void> => {
     assert(data, sendEmailConfirmationSchema)
 

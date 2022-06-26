@@ -5,7 +5,7 @@ import jsonBodyParser from '@middy/http-json-body-parser'
 import Joi from 'joi';
 import { validate } from '@lib/middy-middlewares';
 import { ensure } from '@lib/common';
-import { ApiGatewayEventBody, ApiGatewayResponse } from '@lib/http';
+import { ApiGatewayEventBody, ApiGatewayResponse, EventPath } from '@lib/http';
 import { v4 } from 'uuid';
 import { SQSEvent } from 'aws-lambda';
 import { Event } from '@components/common/events';
@@ -56,7 +56,7 @@ export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Pro
 
 export const updateUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
   const id = event.requestContext.authorizer.principalId;
-  const result = await command.updateUser(id, { ...event.body.user});
+  const result = await command.updateUser(id, { ...event.body.user });
 
   if (result.isOk) {
     const user = ensure(await userReadRepository.find(id, true), `user with id ${id} not found`)
@@ -122,7 +122,7 @@ export const loginHandler = middy(async (event: ApiGatewayEventBody): Promise<Ap
   }))
 
 
-export const getUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
+export const getCurrentUserHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
   const user = await userReadRepository.find(event.requestContext.authorizer.principalId)
 
   if (!user) {
@@ -137,7 +137,109 @@ export const getUserHandler = middy(async (event: ApiGatewayEventBody): Promise<
     body: JSON.stringify({ user: { ...createUserView(user), token: jwt.sign(user) } })
   };
 })
-  .use(jsonBodyParser())
+
+
+type UserProfileRequestEvent = ApiGatewayEventBody & EventPath<{ username: string }>
+export const getUserProfileHandler = middy(async (event: UserProfileRequestEvent): Promise<ApiGatewayResponse> => {
+  const user = await userReadRepository.findByUsername(event.pathParameters.username)
+
+  if (!user) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ error: 'UserNotFound', message: 'User cannot be found' })
+    }
+  }
+
+  let following = false;
+  if (event.requestContext?.authorizer?.principalId) {
+    const currentUser = ensure(await userReadRepository.find(event.requestContext.authorizer.principalId, true), 'Something went wrong')
+    following = currentUser.follows.includes(user.id);
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ user:{
+      ...createUserView(user),
+        following
+    } })
+  };
+})
+
+type FollowUserRequest = ApiGatewayEventBody & EventPath<{ username: string }>
+export const followUserHandler = middy(async (event: FollowUserRequest): Promise<ApiGatewayResponse> => {
+  const currentUserId = event.requestContext.authorizer.principalId;
+  const followee = await userReadRepository.findByUsername(event.pathParameters.username)
+  if (!followee) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ error: 'UserNotFound', message: 'User cannot be found' })
+    }
+  }
+
+  const result = await command.followUser(currentUserId, followee.id)
+  const currentUser = ensure(await userReadRepository.find(currentUserId, true), 'Something went wrong')
+
+
+  if (result.isOk) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        user: {
+          ...createUserView(followee),
+          following: currentUser.follows.includes(followee.id)
+        }
+      })
+    };
+  }
+
+  return match(result.error.name)
+    .with('UserNotFound', (e) => ({
+      statusCode: 404,
+      body: JSON.stringify({ error: e, message: `User with id ${result.error.id} not found` })
+    }))
+    .otherwise(() => ({
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Something went wrong' })
+    }))
+})
+
+type UnfollowUserRequest = ApiGatewayEventBody & EventPath<{ username: string }>
+export const unfollowUserHandler = middy(async (event: UnfollowUserRequest): Promise<ApiGatewayResponse> => {
+  const currentUserId = event.requestContext.authorizer.principalId;
+  const followee = await userReadRepository.findByUsername(event.pathParameters.username)
+  if (!followee) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ error: 'UserNotFound', message: 'User cannot be found' })
+    }
+  }
+
+  const result = await command.unfollowUser(currentUserId, followee.id)
+  const currentUser = ensure(await userReadRepository.find(currentUserId, true), 'Something went wrong')
+
+
+  if (result.isOk) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        user: {
+          ...createUserView(followee),
+          following: currentUser.follows.includes(followee.id)
+        }
+      })
+    };
+  }
+
+  return match(result.error.name)
+    .with('UserNotFound', (e) => ({
+      statusCode: 404,
+      body: JSON.stringify({ error: e, message: `User with id ${result.error.id} not found` })
+    }))
+    .otherwise(() => ({
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Something went wrong' })
+    }))
+})
 
 
 export const onEvent = (event: SQSEvent) => {
