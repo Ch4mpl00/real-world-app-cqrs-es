@@ -1,10 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "module": "commonjs",
-    "lib": [
-      "ES2015"
-    ],
+    "target": "ES6",
+    "module": "esnext",
     "allowJs": true,
     "sourceMap": true,
     "outDir": ".build",
@@ -15,25 +12,18 @@
     "strictNullChecks": true,
     "noUnusedLocals": true,
     "moduleResolution": "node",
+    "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@components/*": [
-        "./src/components/*"
+      "src/*": [
+        "./src/*"
       ],
-      "@modules/*": [
-        "./src/modules/*"
-      ],
-      "@lib/*": [
-        "./src/lib/*"
-      ]
     },
-    "plugins": [
-      {
-        "transform": "ts-transformer-imports"
-      }
-    ],
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "preserveConstEnums": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+  ]
 }

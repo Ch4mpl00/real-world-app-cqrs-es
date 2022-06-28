@@ -11,10 +11,18 @@ export const createHttpResponseBag = (
   status: number,
   headers: ReadonlyArray<object> | undefined = undefined
 ): HttpResponseBag => {
-  return { body, status, headers: headers || [] }
-}
+  return { body, status, headers: headers || [] };
+};
 
 export type ApiGatewayResponse = Promise<APIGatewayProxyResult>;
+
+export type EventRequestContext = {
+  requestContext: {
+    authorizer: {
+      principalId: string;
+    }
+  }
+}
 
 export type ApiGatewayEventBody<T = any> = {
   body: T;
@@ -36,12 +44,4 @@ export type EventHeader<T> = {
 
 export type ProxyHeader = {
   authorization: string;
-}
-
-export type EventRequestContext = {
-  requestContext: {
-    authorizer: {
-      principalId: string;
-    }
-  }
 }

@@ -2,7 +2,7 @@ service: user
 useDotenv: true
 
 plugins:
-  - serverless-tscpaths
+#  - serverless-tscpaths
   - serverless-esbuild
   - serverless-offline
 #  - serverless-plugin-warmup

@@ -1,14 +1,14 @@
 import { DynamoDBStreamEvent } from 'aws-lambda';
-import { sqs } from '@lib/sqs'
-import { Event } from '@components/common/events';
+import { sqs } from 'src/lib/sqs';
+import { Event } from 'src/components/common/events';
 import AWS from 'aws-sdk';
-import { ensure } from '@lib/common';
+import { ensure } from 'src/lib/common';
 
 export const handler = async (event: DynamoDBStreamEvent) => {
   await Promise.all(event.Records.map(record => {
     if (record.eventName !== 'INSERT') return;
 
-    const domainEvent = ensure(record.dynamodb?.NewImage, 'NewImage not found in event')
+    const domainEvent = ensure(record.dynamodb?.NewImage, 'NewImage not found in event');
     const message = AWS.DynamoDB.Converter.unmarshall(domainEvent) as Event;
 
     return sqs.sendMessage({
@@ -18,7 +18,9 @@ export const handler = async (event: DynamoDBStreamEvent) => {
       QueueUrl: process.env.USERS_QUEUE_URL as string
     })
       .promise()
+      // eslint-disable-next-line no-console
       .then(console.log)
-      .catch(e => console.log('ERROR', e))
-  }))
-}
+      // eslint-disable-next-line no-console
+      .catch(e => console.log('ERROR', e));
+  }));
+};

@@ -11,4 +11,4 @@ export const createEmailAlreadyExistsError = (email: string): EmailAlreadyExists
   name: 'EmailAlreadyExists',
   message: `User with email ${email} not found`,
   email
-})
+});

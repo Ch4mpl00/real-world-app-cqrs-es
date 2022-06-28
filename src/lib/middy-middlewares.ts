@@ -14,10 +14,12 @@ export const validate = (schema: JoiSchemaInterface) => {
       const event = _.pick(request.event, ...Object.keys(schema));
       const validatedObject = await Joi.object(schema).validate(event, { abortEarly: false });
 
-      if (validatedObject.error) return {
-        statusCode: 422,
-        body: JSON.stringify({ error: validatedObject.error.details })
-      };
+      if (validatedObject.error) {
+        return {
+          statusCode: 422,
+          body: JSON.stringify({ error: validatedObject.error.details })
+        };
+      }
 
       request.event = { ...request.event, ...validatedObject };
     }

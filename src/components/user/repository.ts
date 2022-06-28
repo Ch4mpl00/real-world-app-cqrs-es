@@ -1,6 +1,6 @@
-import { Event, restore, UserAggregate } from '@components/user/domain';
-import { Result } from "@badrap/result";
-import { DocumentClient } from "aws-sdk/clients/dynamodb";
+import { Event, restore, UserAggregate } from 'src/components/user/domain';
+import { Result } from '@badrap/result';
+import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 
 export type IUserRepository = {
   readonly get: (id: string) => Promise<UserAggregate | null>
@@ -8,39 +8,34 @@ export type IUserRepository = {
   readonly save: (user: UserAggregate) => Promise<Result<boolean, Error>>
 }
 
-const pkey = (id: string) => `user#${id}`
+const pkey = (id: string) => `user#${id}`;
 
 export const createDynamodbUserRepository = (client: DocumentClient, tableName: string): IUserRepository => {
-
   const getEvents = async (aggregateId: string) => client.query({
     TableName: tableName,
     ExpressionAttributeNames: {
-      "#pkey": "pkey"
+      '#pkey': 'pkey'
     },
     ExpressionAttributeValues: {
-      ":pkeyValue": pkey(aggregateId),
+      ':pkeyValue': pkey(aggregateId)
     },
-    KeyConditionExpression: "#pkey = :pkeyValue",
+    KeyConditionExpression: '#pkey = :pkeyValue'
   })
     .promise()
-    .then(res => {
-      console.log(res);
-      return res.Items as Event[]
-    })
+    .then(res => res.Items as Event[])
     .catch((err) => {
-      console.log(err)
-      return []
-    })
+      // eslint-disable-next-line no-console
+      console.log(err);
+      return [];
+    });
 
   const get = async (aggregateId: string) => getEvents(aggregateId)
-    .then(res => {
-      console.log('RES', JSON.stringify(res, null, 2))
-      return restore(aggregateId, res as unknown as Event[])
-    })
+    .then(res => restore(aggregateId, res as unknown as Event[]))
     .catch((err) => {
-      console.log(err)
+      // eslint-disable-next-line no-console
+      console.log(err);
       return null;
-    })
+    });
 
   const save = (user: UserAggregate) => {
     return client.transactWrite({
@@ -55,13 +50,13 @@ export const createDynamodbUserRepository = (client: DocumentClient, tableName: 
       .promise()
       .then(() => Result.ok(true))
       .catch((err) => {
-        console.log(err)
-        return Result.err(err)
-      })
-  }
+        // eslint-disable-next-line no-console
+        console.log(err);
+        return Result.err(err);
+      });
+  };
 
   return {
     get, getEvents, save
-  }
-
-}
+  };
+};

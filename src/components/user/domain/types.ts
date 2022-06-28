@@ -1,9 +1,9 @@
-import { Event } from '@components/user/domain/event';
+import { Event } from 'src/components/user/domain/event';
 
 export type UserId = string
 
 export type RegisterUserData = {
-  readonly id: UserId
+  readonly id: string
   readonly email: string
   readonly password: string
   readonly username: string
@@ -17,12 +17,6 @@ export type UpdateUserData = {
   readonly image?: string | null
 }
 
-export type Profile = {
-  readonly username: string
-  readonly bio: string
-  readonly image: string | null
-}
-
 export type UserAggregate = {
   readonly id: string
   readonly version: number
@@ -30,7 +24,9 @@ export type UserAggregate = {
   readonly state: {
     readonly email: string
     readonly password: string
-    readonly profile: Profile
+    readonly username: string
+    readonly bio: string
+    readonly image: string | null
     readonly follows: ReadonlyArray<UserId>
   }
   readonly newEvents: Event[]

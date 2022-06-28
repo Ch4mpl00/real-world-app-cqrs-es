@@ -1,4 +1,4 @@
-import { RegisterUserData, UpdateUserData, UserId } from '@components/user/domain'
+import { RegisterUserData, UpdateUserData, UserId } from 'src/components/user/domain';
 
 export type UserRegistered = {
   readonly type: 'UserRegistered'
@@ -64,37 +64,37 @@ export const createUserRegisteredEvent = (id: UserId, data: RegisterUserData, ti
   aggregate: 'user',
   aggregateId: id,
   payload: data,
-  timestamp,
-})
+  timestamp
+});
 
 export const createUserProfileUpdatedEvent = (id: UserId, data: UpdateUserData, timestamp: number): UserProfileUpdated => ({
   type: 'UserProfileUpdated',
   aggregate: 'user',
   aggregateId: id,
   payload: data,
-  timestamp,
-})
+  timestamp
+});
 
 export const createUserEmailChangedEvent = (id: string, newEmail: string, oldEmail: string, timestamp: number): UserEmailChanged => ({
   type: 'UserEmailChanged',
   aggregate: 'user',
   aggregateId: id,
   payload: { newEmail, oldEmail },
-  timestamp,
-})
+  timestamp
+});
 
 export const createUserFollowedEvent = (id: string, followeeId: string, timestamp: number): UserFollowed => ({
   type: 'UserFollowed',
   aggregate: 'user',
   aggregateId: id,
   payload: { followeeId },
-  timestamp,
-})
+  timestamp
+});
 
 export const createUserUnfollowedEvent = (id: string, followeeId: string, timestamp: number): UserUnfollowed => ({
   type: 'UserUnfollowed',
   aggregate: 'user',
   aggregateId: id,
   payload: { followeeId },
-  timestamp,
-})
+  timestamp
+});

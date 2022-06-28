@@ -19,16 +19,16 @@ export const ok = <T> (val: T): Success<T> => {
     type: 'Success',
     value: val,
     ok: true
-  }
-}
+  };
+};
 
 export const error = <T> (val: T): Error<T> => {
   return {
     type: 'Error',
     error: val,
     ok: false
-  }
-}
+  };
+};
 
 export type OptionSome<T> = {
   readonly type: 'Some'
@@ -52,15 +52,15 @@ export const Some = <T> (value: T): OptionSome<T> => ({
   some: value,
   isSome: true,
   isNone: false
-})
+});
 
 export const None = (): OptionNone => ({
   type: 'None',
   isSome: false,
   isNone: true
-})
+});
 
-export function matchResult<T, E> (res: Result<T, E>) {
+export function matchResult<T, E>(res: Result<T, E>) {
   return {
     with: <Y, Z> (
       onSuccess: (s: T) => Y,
@@ -68,15 +68,17 @@ export function matchResult<T, E> (res: Result<T, E>) {
     ): Y | Z => {
       switch (res.type) {
         case 'Success':
-          return onSuccess(res.value)
+          return onSuccess(res.value);
         case 'Error':
-          return onError(res.error)
+          return onError(res.error);
+        default:
+          throw new Error('Unexpected type');
       }
     }
-  }
+  };
 }
 
-export function matchOption<T> (res: Option<T>) {
+export function matchOption<T>(res: Option<T>) {
   return {
     with: <Y, Z> (
       onSome: (s: T) => Y,
@@ -84,10 +86,12 @@ export function matchOption<T> (res: Option<T>) {
     ): Y | Z => {
       switch (res.type) {
         case 'Some':
-          return onSome(res.some)
+          return onSome(res.some);
         case 'None':
-          return onNone()
+          return onNone();
+        default:
+          throw new Error('Unexpected type');
       }
     }
-  }
+  };
 }

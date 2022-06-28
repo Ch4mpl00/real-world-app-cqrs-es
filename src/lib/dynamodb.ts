@@ -6,4 +6,4 @@ export const createDynamodbClient = (region: string, endpoint?: string) => {
     logger: console,
     endpoint
   });
-}
+};

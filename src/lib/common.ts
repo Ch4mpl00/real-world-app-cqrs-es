@@ -1,13 +1,8 @@
-import Joi, { Schema } from 'joi'
-
-export function assertUnreachable (_: never): never {
-  // eslint-disable-next-line functional/no-throw-statement
-  throw new Error("Didn't expect to get here")
-}
+import Joi, { Schema } from 'joi';
 
 export const assert = (value: any, schema: Schema) => {
-  Joi.assert(value, schema)
-}
+  Joi.assert(value, schema);
+};
 
 export type DomainEvent = {
   type: string,
@@ -18,7 +13,6 @@ export type DomainEvent = {
 
 type AnyFunc = (...args: any) => any;
 export type ReturnTypeRecursive<T extends AnyFunc> = T extends AnyFunc ? ReturnTypeRecursive<ReturnType<T>> : T;
-
 
 export function ensure<T>(argument: T | undefined | null, message: string): T {
   if (argument === undefined || argument === null) {
