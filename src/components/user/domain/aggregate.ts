@@ -80,6 +80,8 @@ export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => 
 };
 
 export const restore = (id: UserId, events: readonly Event[]) => {
+  if (events.length === 0) return null;
+
   return events.reduce((state, event) => applyEvent(state, event), { id } as UserAggregate);
 };
 

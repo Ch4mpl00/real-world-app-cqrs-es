@@ -5,10 +5,11 @@ export const assert = (value: any, schema: Schema) => {
 };
 
 export type DomainEvent = {
-  type: string,
-  aggregate: string,
-  aggregateId: string,
-  payload: any
+  readonly aggregateId: string;
+  readonly type: string
+  readonly version?: number
+  readonly payload: Record<string, any>
+  readonly aggregate: string
 }
 
 type AnyFunc = (...args: any) => any;

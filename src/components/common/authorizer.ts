@@ -31,7 +31,7 @@ export const tokenAuthorizer = async (event: APIGatewayTokenAuthorizerEvent) => 
     throw new Error('NotAuthorized');
   }
 
-  const decodedToken = jwt.verify(token) as any; // TODO: remove any
+  const decodedToken = jwt.verify(token) as any; // TODO: do not cast to any
 
   const user = userReadRepository.find(decodedToken.id);
 
@@ -52,7 +52,7 @@ export const tokenOrGuestAuthorizer = async (event: APIGatewayTokenAuthorizerEve
     return generateAllowPolicy(v4(), {});
   }
 
-  const decodedToken = jwt.verify(token) as any; // TODO: remove any
+  const decodedToken = jwt.verify(token) as any; // TODO: do not cast to any
 
   const user = userReadRepository.find(decodedToken.id);
 

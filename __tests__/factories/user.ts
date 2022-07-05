@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import * as UserDomain from 'src/components/user/domain';
+import { ensure } from 'src/lib/common';
 
 export const createRegistrationData = (id?: string, options?: Partial<UserDomain.RegisterUserData>): UserDomain.RegisterUserData => ({
   id: id ?? faker.datatype.uuid(),
@@ -26,7 +27,7 @@ export const createUser = (id?: string, options?: Partial<UserDomain.RegisterUse
     }
   ]
 
-  return UserDomain.restore(registrationData.id, events)
+  return ensure(UserDomain.restore(registrationData.id, events), 'Failed to restore user from events')
 }
 
 export const withFollowees = (user: UserDomain.UserAggregate, followees: string[] = []) => {

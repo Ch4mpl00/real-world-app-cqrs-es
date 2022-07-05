@@ -4,11 +4,10 @@ import middy from '@middy/core';
 import jsonBodyParser from '@middy/http-json-body-parser';
 import Joi from 'joi';
 import { validate } from 'src/lib/middy-middlewares';
-import { ensure } from 'src/lib/common';
+import { DomainEvent, ensure } from 'src/lib/common';
 import { ApiGatewayEventBody, ApiGatewayResponse, EventPath } from 'src/lib/http';
 import { v4 } from 'uuid';
 import { SQSEvent } from 'aws-lambda';
-import { Event } from 'src/components/common/events';
 import jwt from 'src/lib/jwt';
 import bcrypt from 'bcryptjs';
 import { UserProjection } from 'src/components/user/readRepository';
@@ -246,7 +245,7 @@ export const onEvent = (event: SQSEvent) => {
   const records = event.Records;
 
   records.map(async r => {
-    const e = JSON.parse(r.body) as Event;
+    const e = JSON.parse(r.body) as DomainEvent;
     await userReadRepository.onEvent(e);
   });
 };
