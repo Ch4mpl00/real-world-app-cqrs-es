@@ -30,14 +30,14 @@ export const registerUserHandler = middy(async (event: ApiGatewayEventBody): Pro
     };
   }
 
-  return match(result.error.name)
-    .with('EmailAlreadyExists', (e) => ({
+  return match(result.error)
+    .with({ name: 'EmailAlreadyExists' }, (e) => ({
       statusCode: 422,
-      body: JSON.stringify({ error: e, message: 'Email already exists' })
+      body: JSON.stringify({ error: e.name, message: e.message })
     }))
     .otherwise(() => ({
       statusCode: 500,
-      body: JSON.stringify({ error: 'Something went wrong' })
+      body: JSON.stringify({ error: 'InternalServerError', message: 'Internal server error' })
     }));
 })
   .use(jsonBodyParser())
@@ -66,18 +66,18 @@ export const updateUserHandler = middy(async (event: ApiGatewayEventBody): Promi
     };
   }
 
-  return match(result.error.name)
-    .with('EmailAlreadyExists', (e) => ({
+  return match(result.error)
+    .with({ name: 'EmailAlreadyExists' }, (e) => ({
       statusCode: 422,
-      body: JSON.stringify({ error: e, message: 'Email already exists' })
+      body: JSON.stringify({ error: e.name, message: e.message })
     }))
-    .with('UserNotFound', (e) => ({
+    .with({ name: 'UserNotFound' }, (e) => ({
       statusCode: 422,
-      body: JSON.stringify({ error: e, message: 'User not found' })
+      body: JSON.stringify({ error: e.name, message: e.message })
     }))
     .otherwise(() => ({
       statusCode: 500,
-      body: JSON.stringify({ error: 'Something went wrong' })
+      body: JSON.stringify({ error: 'InternalServerError', message: 'Internal server error' })
     }));
 })
   .use(jsonBodyParser())
@@ -190,14 +190,18 @@ export const followUserHandler = middy(async (event: FollowUserRequest): Promise
     };
   }
 
-  return match(result.error.name)
-    .with('UserNotFound', (e) => ({
+  return match(result.error)
+    .with({ name: 'UserNotFound' }, (e) => ({
       statusCode: 404,
-      body: JSON.stringify({ error: e, message: `User with id ${result.error.id} not found` })
+      body: JSON.stringify({ error: e.name, message: e.message })
+    }))
+    .with({ name: 'CannotFollowYourself' }, (e) => ({
+      statusCode: 404,
+      body: JSON.stringify({ error: e.name, message: e.message })
     }))
     .otherwise(() => ({
       statusCode: 500,
-      body: JSON.stringify({ error: 'Something went wrong' })
+      body: JSON.stringify({ error: 'InternalServerError', message: 'Internal server error' })
     }));
 });
 
@@ -227,14 +231,14 @@ export const unfollowUserHandler = middy(async (event: UnfollowUserRequest): Pro
     };
   }
 
-  return match(result.error.name)
-    .with('UserNotFound', (e) => ({
+  return match(result.error)
+    .with({ name: 'UserNotFound' }, (e) => ({
       statusCode: 404,
-      body: JSON.stringify({ error: e, message: `User with id ${result.error.id} not found` })
+      body: JSON.stringify({ error: e.name, message: e.message })
     }))
     .otherwise(() => ({
       statusCode: 500,
-      body: JSON.stringify({ error: 'Something went wrong' })
+      body: JSON.stringify({ error: 'InternalServerError', message: 'Internal server error' })
     }));
 });
 

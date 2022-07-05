@@ -1,11 +1,10 @@
 import { Event, restore, UserAggregate } from 'src/components/user/domain';
-import { Result } from '@badrap/result';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 
 export type IUserRepository = {
   readonly get: (id: string) => Promise<UserAggregate | null>
   readonly getEvents: (id: string) => Promise<Event[]>
-  readonly save: (user: UserAggregate) => Promise<Result<boolean, Error>>
+  readonly save: (user: UserAggregate) => Promise<boolean>
 }
 
 const pkey = (id: string) => `user#${id}`;
@@ -22,20 +21,10 @@ export const createDynamodbUserRepository = (client: DocumentClient, tableName: 
     KeyConditionExpression: '#pkey = :pkeyValue'
   })
     .promise()
-    .then(res => res.Items as Event[])
-    .catch((err) => {
-      // eslint-disable-next-line no-console
-      console.log(err);
-      return [];
-    });
+    .then(res => res.Items as Event[]);
 
   const get = async (aggregateId: string) => getEvents(aggregateId)
-    .then(res => restore(aggregateId, res as unknown as Event[]))
-    .catch((err) => {
-      // eslint-disable-next-line no-console
-      console.log(err);
-      return null;
-    });
+    .then(res => restore(aggregateId, res as unknown as Event[]));
 
   const save = (user: UserAggregate) => {
     return client.transactWrite({
@@ -48,12 +37,7 @@ export const createDynamodbUserRepository = (client: DocumentClient, tableName: 
       }))
     })
       .promise()
-      .then(() => Result.ok(true))
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.log(err);
-        return Result.err(err);
-      });
+      .then(() => true);
   };
 
   return {

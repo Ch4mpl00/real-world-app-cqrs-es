@@ -1,6 +1,8 @@
 import { assert } from 'src/lib/common';
 import * as UserDomain from 'src/components/user/domain';
-import { RegisterUserData, UpdateUserData, UserId } from 'src/components/user/domain';
+import {
+  createUserNotFoundError, RegisterUserData, UpdateUserData, UserId
+} from 'src/components/user/domain';
 import { IUserRepository } from 'src/components/user/repository';
 import { IUserReadRepository } from 'src/components/user/readRepository';
 import Joi from 'joi';
@@ -21,11 +23,6 @@ const updateUserDataSchema = Joi.object({
   image: Joi.string().optional()
 });
 
-const sendEmailConfirmationSchema = Joi.object({
-  email: Joi.string().email().optional(),
-  id: Joi.string()
-});
-
 export const createCommandHandlers = (
   userRepository: IUserRepository,
   userReadRepository: IUserReadRepository
@@ -33,95 +30,68 @@ export const createCommandHandlers = (
   registerUser: async (data: RegisterUserData) => {
     assert(data, registerUserDataSchema);
 
-    const result = UserDomain.registerUser(data.id, {
-      ...data,
-      password: await bcrypt.hash(data.password, 10)
-    }, {
+    const context = {
       emailAlreadyExists: !!(await userReadRepository.findByEmail(data.email)),
       timestamp: new Date().getTime()
-    });
+    };
 
-    if (result.isOk) {
-      const saveResult = await userRepository.save(result.value);
-      if (saveResult.isErr) {
-        return saveResult;
-      }
-    }
+    const result = UserDomain.registerUser(
+      data.id,
+      { ...data, password: await bcrypt.hash(data.password, 10) },
+      context
+    );
+
+    if (result.isOk) await userRepository.save(result.value);
 
     return result;
   },
 
-  updateUser: async (id: string, data: UpdateUserData) => {
+  updateUser: async (id: UserId, data: UpdateUserData) => {
     assert(data, updateUserDataSchema);
 
     const user = await userRepository.get(id);
 
-    if (!user) {
-      return Result.err({ name: 'UserNotFound', message: 'User not found', id });
-    }
+    if (!user) return Result.err(createUserNotFoundError(`User with id: ${id} not found`));
 
-    const result = UserDomain.updateUser(user, data, {
+    const context = {
       emailAlreadyExists: data.email
         ? !!(await userReadRepository.findByEmail(data.email))
         : false,
       timestamp: new Date().getTime()
-    });
+    };
 
-    if (result.isOk) {
-      await userRepository.save(result.value);
-    }
+    const result = UserDomain.updateUser(user, data, context);
+
+    if (result.isOk) await userRepository.save(result.value);
 
     return result;
   },
 
-  followUser: async (followerId: string, followeeId: string) => {
+  followUser: async (followerId: UserId, followeeId: UserId) => {
     const follower = await userRepository.get(followerId);
     const followable = await userRepository.get(followeeId);
 
-    if (!follower) {
-      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followerId });
-    }
-
-    if (!followable) {
-      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followeeId });
-    }
+    if (!follower) return Result.err(createUserNotFoundError());
+    if (!followable) return Result.err(createUserNotFoundError());
 
     const result = UserDomain.followUser(follower, followable.id, { timestamp: new Date().getTime() });
 
-    if (result.isOk) {
-      await userRepository.save(result.value);
-    }
+    if (result.isOk) await userRepository.save(result.value);
 
     return result;
   },
 
-  unfollowUser: async (followerId: string, followeeId: string) => {
+  unfollowUser: async (followerId: UserId, followeeId: UserId) => {
     const follower = await userRepository.get(followerId);
     const followable = await userRepository.get(followeeId);
 
-    if (!follower) {
-      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followerId });
-    }
-
-    if (!followable) {
-      return Result.err({ name: 'UserNotFound', message: 'User not found', id: followeeId });
-    }
+    if (!follower) return Result.err(createUserNotFoundError());
+    if (!followable) return Result.err(createUserNotFoundError());
 
     const result = UserDomain.unfollowUser(follower, followable.id, { timestamp: new Date().getTime() });
 
-    if (result.isOk) {
-      await userRepository.save(result.value);
-    }
+    if (result.isOk) await userRepository.save(result.value);
 
     return result;
-  },
-
-  sendConfirmationEmail: async (data: { readonly id: UserId, readonly email: string }): Promise<void> => {
-    assert(data, sendEmailConfirmationSchema);
-
-    // eslint-disable-next-line no-console
-    console.log(`Sent confirmation email to ${data.email}`);
-    // create confirmation token
-    // send an email
   }
 });

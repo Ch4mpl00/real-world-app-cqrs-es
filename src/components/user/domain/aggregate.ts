@@ -10,7 +10,7 @@ import {
   UserId,
   RegisterUserData,
   UserAggregate,
-  UpdateUserData
+  UpdateUserData, CannotFollowYourself, createCannotFollowYourselfError
 } from 'src/components/user/domain';
 import { match } from 'ts-pattern';
 import { isEmpty } from 'lodash';
@@ -128,7 +128,12 @@ export const updateUser = (
   );
 };
 
-export const followUser = (user: UserAggregate, followeeId: UserId, context: { timestamp: number }): Result<UserAggregate, never> => {
+export const followUser = (
+  user: UserAggregate,
+  followeeId: UserId,
+  context: { timestamp: number }
+): Result<UserAggregate, CannotFollowYourself> => {
+  if (user.id === followeeId) return Result.err(createCannotFollowYourselfError());
   if (user.state.follows.includes(followeeId)) return Result.ok(user);
 
   return Result.ok(
@@ -136,7 +141,12 @@ export const followUser = (user: UserAggregate, followeeId: UserId, context: { t
   );
 };
 
-export const unfollowUser = (user: UserAggregate, followeeId: UserId, context: { timestamp: number }): Result<UserAggregate, never> => {
+export const unfollowUser = (
+  user: UserAggregate,
+  followeeId: UserId,
+  context: { timestamp: number }
+): Result<UserAggregate, CannotFollowYourself> => {
+  if (user.id === followeeId) return Result.err(createCannotFollowYourselfError());
   if (!user.state.follows.includes(followeeId)) return Result.ok(user);
 
   return Result.ok(

@@ -1,7 +1,7 @@
 import * as UserDomain from 'src/components/user/domain'
 import { createRegistrationData, createUser, withFollowees } from '../../factories';
 
-describe('User aggregate', () => {
+describe('User Domain Model', () => {
   describe('Register user', () => {
     test('it should create UserRegistered event', () => {
       const data = createRegistrationData()
@@ -119,6 +119,14 @@ describe('User aggregate', () => {
       }])
     })
 
+    test('it should return an error when try follow himself', () => {
+      const follower = createUser();
+      const context = { timestamp: new Date().getTime() }
+
+      const result = UserDomain.followUser(follower, follower.id, context)
+      expect(result.isErr).toBe(true)
+    })
+
     test('it should not add follower if already follows', () => {
       const followee = createUser();
       const follower = withFollowees(createUser(), [followee.id]);
@@ -128,27 +136,35 @@ describe('User aggregate', () => {
       expect(result.isOk).toBe(true)
       expect(result.unwrap().newEvents.length).toBe(0)
     })
-  })
 
-  test('it should unfollow user', () => {
-    const followee = createUser();
-    const follower = withFollowees(createUser(), [followee.id]);
-    const context = { timestamp: new Date().getTime() }
+    test('it should unfollow user', () => {
+      const followee = createUser();
+      const follower = withFollowees(createUser(), [followee.id]);
+      const context = { timestamp: new Date().getTime() }
 
-    const result = UserDomain.unfollowUser(follower, followee.id, context)
-    expect(result.isOk).toBe(true)
-    expect(result.unwrap().newEvents).toStrictEqual([{
-      ...UserDomain.createUserUnfollowedEvent(follower.id, followee.id, context.timestamp),
-      version: follower.version + 1
-    }])
-  })
+      const result = UserDomain.unfollowUser(follower, followee.id, context)
+      expect(result.isOk).toBe(true)
+      expect(result.unwrap().newEvents).toStrictEqual([{
+        ...UserDomain.createUserUnfollowedEvent(follower.id, followee.id, context.timestamp),
+        version: follower.version + 1
+      }])
+    })
 
-  test('it should not unfollow user if not followed', () => {
-    const user = createUser();
-    const context = { timestamp: new Date().getTime() }
+    test('it should not unfollow user if not followed', () => {
+      const user = createUser();
+      const context = { timestamp: new Date().getTime() }
 
-    const result = UserDomain.unfollowUser(user, 'random-user-id', context)
-    expect(result.isOk).toBe(true)
-    expect(result.unwrap().newEvents.length).toBe(0)
+      const result = UserDomain.unfollowUser(user, 'random-user-id', context)
+      expect(result.isOk).toBe(true)
+      expect(result.unwrap().newEvents.length).toBe(0)
+    })
+
+    test('it should return an error when try unfollow himself', () => {
+      const follower = createUser();
+      const context = { timestamp: new Date().getTime() }
+
+      const result = UserDomain.followUser(follower, follower.id, context)
+      expect(result.isErr).toBe(true)
+    })
   })
 })
