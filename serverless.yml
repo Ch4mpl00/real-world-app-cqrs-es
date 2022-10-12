@@ -2,7 +2,7 @@ service: user
 useDotenv: true
 
 plugins:
-#  - serverless-tscpaths
+  #  - serverless-tscpaths
   - serverless-esbuild
   - serverless-offline
 #  - serverless-plugin-warmup
@@ -22,13 +22,72 @@ custom:
 
 resources:
   Resources:
-    NewSQSQueue:
+    UserProjectionSqsQueue:
       Type: "AWS::SQS::Queue"
       Properties:
-        QueueName: user.fifo
+        QueueName: user-projection.fifo
         FifoQueue: true
-#        DeduplicationScope: messageGroup
-#        FifoThroughputLimit: perMessageGroupId
+    OtherSqsQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: other.fifo
+        FifoQueue: true
+    NoConsumerQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: test.fifo
+        FifoQueue: true
+    DomainEventsSNSTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        FifoTopic: true
+        TopicName: DomainEventsTopic.fifo
+    UserProjectionQueueSubscription:
+      Type: "AWS::SNS::Subscription"
+      Properties:
+        TopicArn: !Ref DomainEventsSNSTopic
+        Endpoint:
+          Fn::GetAtt:
+            - UserProjectionSqsQueue
+            - Arn
+        Protocol: sqs
+        RawMessageDelivery: "true"
+    UserAnotherSubscription:
+      Type: "AWS::SNS::Subscription"
+      Properties:
+        TopicArn: !Ref DomainEventsSNSTopic
+        Endpoint:
+          Fn::GetAtt:
+            - OtherSqsQueue
+            - Arn
+        Protocol: sqs
+        RawMessageDelivery: "true"
+    NoConsumerQueueSubscription:
+      Type: "AWS::SNS::Subscription"
+      Properties:
+        TopicArn: !Ref DomainEventsSNSTopic
+        Endpoint:
+          Fn::GetAtt:
+            - NoConsumerQueue
+            - Arn
+        Protocol: sqs
+        RawMessageDelivery: "true"
+    ExtraQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - !Ref UserProjectionSqsQueue
+          - !Ref OtherSqsQueue
+          - !Ref NoConsumerQueue
+        PolicyDocument:
+          Statement:
+            - Sid: Allow-SNS-SendMessage-${self:service}
+              Effect: Allow
+              Principal:
+                Service: sns.amazonaws.com
+              Action:
+                - sqs:SendMessage
+              Resource: arn:aws:sqs:*
     EventLogTable:
       Type: AWS::DynamoDB::Table
       DeletionPolicy: Retain
@@ -79,11 +138,13 @@ resources:
               WriteCapacityUnits: 1
           - IndexName: username
             KeySchema:
-                - AttributeName: username
-                  KeyType: HASH
+              - AttributeName: username
+                KeyType: HASH
             Projection:
               ProjectionType: ALL
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
-
+  Outputs:
+    DomainEventsSNSTopicArn:
+      Value: !Ref DomainEventsSNSTopic

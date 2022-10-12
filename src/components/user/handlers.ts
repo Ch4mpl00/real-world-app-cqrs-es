@@ -241,11 +241,19 @@ export const unfollowUserHandler = middy(async (event: UnfollowUserRequest): Pro
     }));
 });
 
-export const onEvent = (event: SQSEvent) => {
+export const createUserProjectionHandler = (event: SQSEvent) => {
   const records = event.Records;
 
   records.map(async r => {
     const e = JSON.parse(r.body) as DomainEvent;
     await userReadRepository.onEvent(e);
+  });
+};
+
+export const someAction = (event: SQSEvent) => {
+  const records = event.Records;
+
+  records.map(async r => {
+    console.log('Other handler', r.body);
   });
 };

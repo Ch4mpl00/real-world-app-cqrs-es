@@ -11,3 +11,5 @@ event_log_stream_listener:
         maximumRetryAttempts: 3
         batchSize: 10
         startingPosition: LATEST
+  environment:
+    SNS_EVENT_BUS_TOPIC: ${self:resources.Outputs.DomainEventsSNSTopicArn.Value}

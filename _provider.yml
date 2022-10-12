@@ -30,6 +30,11 @@ iam:
           - sqs:*
         Resource:
           - arn:aws:sqs:*
+      - Effect: Allow
+        Action:
+          - "sns:Publish"
+        Resource:
+          - arn:aws:sns:*
 environment:
   DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
   DYNAMODB_TABLE_EVENT_LOG: ${env:DYNAMODB_TABLE_EVENT_LOG}

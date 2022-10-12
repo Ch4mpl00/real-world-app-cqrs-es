@@ -17,6 +17,7 @@ export type CannotFollowYourself = {
 export type UserDomainError =
   | EmailAlreadyExists
   | UserNotFound
+  | CannotFollowYourself
 
 export const createEmailAlreadyExistsError = (email: string): EmailAlreadyExists => ({
   name: 'EmailAlreadyExists',

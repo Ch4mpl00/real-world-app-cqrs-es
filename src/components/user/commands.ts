@@ -69,12 +69,12 @@ export const createCommandHandlers = (
 
   followUser: async (followerId: UserId, followeeId: UserId) => {
     const follower = await userRepository.get(followerId);
-    const followable = await userRepository.get(followeeId);
+    const followee = await userRepository.get(followeeId);
 
     if (!follower) return Result.err(createUserNotFoundError());
-    if (!followable) return Result.err(createUserNotFoundError());
+    if (!followee) return Result.err(createUserNotFoundError());
 
-    const result = UserDomain.followUser(follower, followable.id, { timestamp: new Date().getTime() });
+    const result = UserDomain.followUser(follower, followee.id, { timestamp: new Date().getTime() });
 
     if (result.isOk) await userRepository.save(result.value);
 
@@ -83,12 +83,12 @@ export const createCommandHandlers = (
 
   unfollowUser: async (followerId: UserId, followeeId: UserId) => {
     const follower = await userRepository.get(followerId);
-    const followable = await userRepository.get(followeeId);
+    const followee = await userRepository.get(followeeId);
 
     if (!follower) return Result.err(createUserNotFoundError());
-    if (!followable) return Result.err(createUserNotFoundError());
+    if (!followee) return Result.err(createUserNotFoundError());
 
-    const result = UserDomain.unfollowUser(follower, followable.id, { timestamp: new Date().getTime() });
+    const result = UserDomain.unfollowUser(follower, followee.id, { timestamp: new Date().getTime() });
 
     if (result.isOk) await userRepository.save(result.value);
 
