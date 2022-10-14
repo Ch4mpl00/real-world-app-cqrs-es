@@ -1,4 +1,4 @@
-import { Event, UserId } from 'src/components/user/domain';
+import { UserDomainEvent, UserId } from 'src/components/user/domain';
 import { DomainEvent, ensure } from 'src/lib/common';
 import { match } from 'ts-pattern';
 import { IUserRepository } from 'src/components/user/repository';
@@ -21,7 +21,7 @@ export type UserProjection = {
 export const applyEventsOnUserProjection = (state: UserProjection | null, event: DomainEvent) => {
   const user = state || {} as UserProjection; // TODO: initial state
 
-  return match<Event, UserProjection>(event as Event)
+  return match<UserDomainEvent, UserProjection>(event as UserDomainEvent)
     .with({ type: 'UserRegistered' }, (e) => ({
       id: e.aggregateId,
       email: e.payload.email,
@@ -64,7 +64,7 @@ export const applyEventsOnUserProjection = (state: UserProjection | null, event:
 };
 
 export type IUserReadRepository = {
-  onEvent: (event: Event | DomainEvent) => Promise<void>
+  onEvent: (event: UserDomainEvent | DomainEvent) => Promise<void>
   find: (id: string, consistentRead?: boolean) => Promise<UserProjection | null>
   findByUsername: (username: string) => Promise<UserProjection | null>
   findByEmail: (id: string) => Promise<UserProjection | null>
@@ -128,7 +128,7 @@ export const createDynamoDbReadRepository = (
       .catch(Result.err);
   };
 
-  const onEvent = async (event: Event | DomainEvent) => {
+  const onEvent = async (event: UserDomainEvent | DomainEvent) => {
     if (event.aggregate !== 'user') return;
 
     const projection = await find(event.aggregateId);

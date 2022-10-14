@@ -12,6 +12,7 @@ import jwt from 'src/lib/jwt';
 import bcrypt from 'bcryptjs';
 import { UserProjection } from 'src/components/user/readRepository';
 import { omit } from 'lodash';
+import { UserRegistered } from 'src/components/user/domain';
 
 const createUserView = (user: UserProjection) => omit(user, ['password', 'version']);
 
@@ -250,10 +251,15 @@ export const createUserProjectionHandler = (event: SQSEvent) => {
   });
 };
 
-export const someAction = (event: SQSEvent) => {
+export const sendGreetingsEmailHandler = (event: SQSEvent) => {
   const records = event.Records;
+  const events = records
+    .map(r => JSON.parse(r.body) as DomainEvent)
+    .filter((e): e is UserRegistered => e.type === 'UserRegistered');
 
-  records.map(async r => {
-    console.log('Other handler', r.body);
+  events.map(e => {
+    // eslint-disable-next-line no-console
+    console.log(`Sending greetings email to ${e.payload.email}`);
+    return e;
   });
 };

@@ -6,7 +6,7 @@ import {
   EmailAlreadyExists,
   createUserEmailChangedEvent,
   createUserProfileUpdatedEvent,
-  Event,
+  UserDomainEvent,
   UserId,
   RegisterUserData,
   UserAggregate,
@@ -23,12 +23,12 @@ const initialState = (id: string): UserAggregate => ({
   version: 0
 });
 
-export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => {
+export const applyEvent = (user: UserAggregate, event: UserDomainEvent): UserAggregate => {
   if (event.aggregateId !== user.id) {
     return user;
   }
 
-  const state = match<Event, UserAggregate['state']>(event)
+  const state = match<UserDomainEvent, UserAggregate['state']>(event)
     .with({ type: 'UserRegistered' }, (e) => ({
       email: e.payload.email,
       password: e.payload.password,
@@ -79,7 +79,7 @@ export const applyEvent = (user: UserAggregate, event: Event): UserAggregate => 
   };
 };
 
-export const restore = (id: UserId, events: readonly Event[]) => {
+export const restore = (id: UserId, events: readonly UserDomainEvent[]) => {
   if (events.length === 0) return null;
 
   return events.reduce((state, event) => applyEvent(state, event), initialState(id));

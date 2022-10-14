@@ -27,15 +27,10 @@ resources:
       Properties:
         QueueName: user-projection.fifo
         FifoQueue: true
-    OtherSqsQueue:
+    UserGreetingsEmailsQueue:
       Type: "AWS::SQS::Queue"
       Properties:
-        QueueName: other.fifo
-        FifoQueue: true
-    NoConsumerQueue:
-      Type: "AWS::SQS::Queue"
-      Properties:
-        QueueName: test.fifo
+        QueueName: user_greetings.fifo
         FifoQueue: true
     DomainEventsSNSTopic:
       Type: AWS::SNS::Topic
@@ -58,17 +53,7 @@ resources:
         TopicArn: !Ref DomainEventsSNSTopic
         Endpoint:
           Fn::GetAtt:
-            - OtherSqsQueue
-            - Arn
-        Protocol: sqs
-        RawMessageDelivery: "true"
-    NoConsumerQueueSubscription:
-      Type: "AWS::SNS::Subscription"
-      Properties:
-        TopicArn: !Ref DomainEventsSNSTopic
-        Endpoint:
-          Fn::GetAtt:
-            - NoConsumerQueue
+            - UserGreetingsEmailsQueue
             - Arn
         Protocol: sqs
         RawMessageDelivery: "true"
@@ -77,8 +62,7 @@ resources:
       Properties:
         Queues:
           - !Ref UserProjectionSqsQueue
-          - !Ref OtherSqsQueue
-          - !Ref NoConsumerQueue
+          - !Ref UserGreetingsEmailsQueue
         PolicyDocument:
           Statement:
             - Sid: Allow-SNS-SendMessage-${self:service}

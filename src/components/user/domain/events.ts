@@ -52,7 +52,7 @@ export type UserUnfollowed = {
   }
 }
 
-export type Event =
+export type UserDomainEvent =
   | UserRegistered
   | UserEmailChanged
   | UserProfileUpdated

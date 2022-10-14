@@ -86,13 +86,13 @@ create_user_projection:
             - Arn
         batchSize: 10
         functionResponseType: ReportBatchItemFailures
-some_user_action:
-  handler: src/components/user/handlers.someAction
+send_greetings_email:
+  handler: src/components/user/handlers.sendGreetingsEmailHandler
   events:
     - sqs:
         arn:
           Fn::GetAtt:
-            - OtherSqsQueue
+            - UserGreetingsEmailsQueue
             - Arn
         batchSize: 10
         functionResponseType: ReportBatchItemFailures

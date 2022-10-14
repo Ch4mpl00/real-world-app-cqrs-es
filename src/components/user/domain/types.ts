@@ -1,4 +1,4 @@
-import { Event } from 'src/components/user/domain/event';
+import { UserDomainEvent } from 'src/components/user/domain';
 
 export type UserId = string
 
@@ -29,7 +29,7 @@ export type UserAggregate = {
     readonly image: string | null
     readonly follows: ReadonlyArray<UserId>
   }
-  readonly newEvents: Event[]
+  readonly newEvents: UserDomainEvent[]
 }
 
 export type AuthorizerIncomeRequestType = {
