@@ -156,7 +156,7 @@ export const getUserProfileHandler = middy(async (event: UserProfileRequestEvent
   return {
     statusCode: 200,
     body: JSON.stringify({
-      user: {
+      profile: {
         ...createUserView(user),
         following
       }
@@ -182,7 +182,7 @@ export const followUserHandler = middy(async (event: FollowUserRequest): Promise
     return {
       statusCode: 200,
       body: JSON.stringify({
-        user: {
+        profile: {
           ...createUserView(followee),
           following: currentUser.follows.includes(followee.id)
         }
@@ -223,7 +223,7 @@ export const unfollowUserHandler = middy(async (event: UnfollowUserRequest): Pro
     return {
       statusCode: 200,
       body: JSON.stringify({
-        user: {
+        profile: {
           ...createUserView(followee),
           following: currentUser.follows.includes(followee.id)
         }

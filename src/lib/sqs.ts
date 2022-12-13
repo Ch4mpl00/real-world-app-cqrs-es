@@ -8,4 +8,4 @@ export const sqs = new AWS.SQS({
 export const sns = new AWS.SNS({
   apiVersion: 'latest',
   logger: console,
-})
+});
