@@ -4,22 +4,22 @@ import { match } from 'ts-pattern';
 import { IUserRepository } from 'src/components/user/repository';
 import { Result } from '@badrap/result';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
+import { applyEvent } from './domain/aggregate';
 
-export type UserProjection = {
-  readonly id: string
-  readonly email: string
-  readonly username: string
-  readonly bio: string
-  readonly image: string | null
-  readonly follows: ReadonlyArray<UserId>
-  readonly createdAt: number
-  readonly updatedAt: number
-  readonly password: string
-  readonly version: number
-}
+export type UserProjection = Readonly<{
+  id: string
+  email: string
+  username: string
+  bio: string
+  image: string | null
+  follows: ReadonlyArray<UserId>
+  createdAt: number
+  updatedAt: number
+  password: string
+  version: number
+}>
 
-export const applyEventsOnUserProjection = (state: UserProjection | null, event: DomainEvent) => {
-  const user = state || {} as UserProjection; // TODO: initial state
+export const applyEvent = (user: UserProjection, event: DomainEvent) => {
 
   return match<UserDomainEvent, UserProjection>(event as UserDomainEvent)
     .with({ type: 'UserRegistered' }, (e) => ({
@@ -81,9 +81,12 @@ export const createDynamoDbReadRepository = (
       const events = await userRepository.getEvents(id);
 
       if (events.length === 0) return null;
+      if (events[0].type !== 'UserRegistered') {
+        console.error(`Invalid events ordering for aggregate ${id}`);
+        return null;
+      }
 
-      // TODO: default state instead of type casting
-      return events.reduce((state, event) => applyEventsOnUserProjection(state, event), {} as UserProjection);
+      return events.reduce((state, event) => applyEvent(state, event), {} as UserProjection);
     }
 
     return client.query({
@@ -133,7 +136,7 @@ export const createDynamoDbReadRepository = (
 
     const projection = await find(event.aggregateId);
 
-    await save(applyEventsOnUserProjection(projection, event));
+    await save(applyEvent(projection, event));
   };
 
   const findByUsername = async (username: string) => {

@@ -6,7 +6,7 @@ export type IEventLogRepository<E, T extends { newEvents: E[] }> = {
   readonly save: (aggregate: T) => Promise<boolean>
 }
 
-export const createDynamodbEventLogRepository = <E, T extends { newEvents: E[], type: string, id: string }> (
+export const createDynamodbEventLogRepository = <E, T extends { newEvents: E[], type: string, id: string }>(
   client: DocumentClient,
   tableName: string,
   pkeyPrefix: T['type'],

@@ -96,7 +96,7 @@ export const registerUser = (
   context: UserRegistrationContext
 ): Result<UserAggregate, EmailAlreadyExists> => {
   if (context.emailAlreadyExists) {
-    return Result.err({ name: 'EmailAlreadyExists', message: '', email: data.email });
+    return Result.err({ name: 'EmailAlreadyExists', message: 'Email already exists', email: data.email });
   }
 
   return Result.ok(

@@ -1,8 +1,9 @@
 import jwt from 'src/lib/jwt';
 import { ensure } from 'src/lib/common';
-import { APIGatewayTokenAuthorizerEvent } from 'aws-lambda/trigger/api-gateway-authorizer';
+import { APIGatewayAuthorizerCallback, APIGatewayTokenAuthorizerEvent } from 'aws-lambda/trigger/api-gateway-authorizer';
 import { userReadRepository } from 'src/components/user';
 import { v4 } from 'uuid';
+import { APIGatewayEventLambdaAuthorizerContext } from 'aws-lambda';
 
 const generatePolicy = (userId: string, effect: string, context: Record<string, any>) => {
   return {
@@ -24,14 +25,25 @@ const generatePolicy = (userId: string, effect: string, context: Record<string, 
 const generateAllowPolicy = (userId: string, context: Record<string, any>): Record<string, any> => generatePolicy(userId, 'Allow', context);
 const extractToken = (authorization?: string) => authorization?.split(' ').pop();
 
-export const tokenAuthorizer = async (event: APIGatewayTokenAuthorizerEvent) => {
+export const tokenAuthorizer = async (
+  event: APIGatewayTokenAuthorizerEvent,
+  context: APIGatewayEventLambdaAuthorizerContext<any>,
+  callback: APIGatewayAuthorizerCallback
+) => {
   const token = extractToken(event.authorizationToken);
 
   if (!token) {
-    throw new Error('NotAuthorized');
+    callback('Unauthorized');
+    return;
   }
 
-  const decodedToken = jwt.verify(token) as any; // TODO: do not cast to any
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(token) as any; // TODO: do not cast to any
+  } catch (e) {
+    callback('Error: Invalid token');
+    return;
+  }
 
   const user = userReadRepository.find(decodedToken.id);
 
