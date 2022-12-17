@@ -4,7 +4,6 @@ import { match } from 'ts-pattern';
 import { IUserRepository } from 'src/components/user/repository';
 import { Result } from '@badrap/result';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
-import { applyEvent } from './domain/aggregate';
 
 export type UserProjection = Readonly<{
   id: string
@@ -136,7 +135,7 @@ export const createDynamoDbReadRepository = (
 
     const projection = await find(event.aggregateId);
 
-    await save(applyEvent(projection, event));
+    await save(applyEvent(projection || {} as UserProjection, event));
   };
 
   const findByUsername = async (username: string) => {

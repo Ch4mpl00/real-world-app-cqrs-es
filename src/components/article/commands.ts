@@ -8,7 +8,8 @@ export const createCommandHandlers = (
   articleRepository: IArticleRepository
 ) => ({
   create: async (id: string, data: ArticleDto) => {
-    const slug = slugify(data.title);
+    const slug = slugify(data.title); // TODO: ensure slug is unique
+
     const result = ArticleDomain.create(
       id,
       { ...data, slug },

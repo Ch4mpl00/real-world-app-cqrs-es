@@ -28,7 +28,7 @@ export type ArticleProjection = Readonly<{
   version: number
 }>
 
-const applyEvent = (
+export const applyEvent = (
   state: ArticleProjection,
   event: DomainEvent
 ): ArticleProjection => {
@@ -72,6 +72,7 @@ const applyEvent = (
 export type IArticleReadRepository = {
   find: (id: string, consistentRead?: boolean) => Promise<ArticleProjection | null>
   save: (projection: ArticleProjection) => Promise<Result<ArticleProjection, Error>>
+  onEvent: (event: DomainEvent) => Promise<void>
 }
 
 
@@ -93,7 +94,7 @@ export const createDynamoDbReadRepository = (
       }
 
       const authorId = (events[0] as ArticleCreated).payload.authorId;
-      const authorEvents = await eventLogRepository.getEvents(authorId)
+      const authorEvents = await eventLogRepository.getEvents(authorId);
 
       return [...events, ...authorEvents].reduce((state, event) => applyEvent(state, event), {} as ArticleProjection);
     }
@@ -113,6 +114,14 @@ export const createDynamoDbReadRepository = (
       .catch(() => null);
   };
 
+  const onEvent = async (event: DomainEvent) => {
+    if (event.aggregate !== 'article') return;
+
+    const projection = await find(event.aggregateId);
+
+    await save(applyEvent(projection || {} as ArticleProjection, event));
+  };
+
   const save = async (projection: ArticleProjection) => {
     return client.put({
       TableName: tableName,
@@ -126,6 +135,7 @@ export const createDynamoDbReadRepository = (
   return {
     find,
     save,
+    onEvent,
   }
 }
 
