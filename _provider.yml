@@ -35,9 +35,20 @@ iam:
           - "sns:Publish"
         Resource:
           - arn:aws:sns:*
+      - Effect: 'Allow'
+        Action:
+          - es:ESHttpDelete
+          - es:ESHttpGet
+          - es:ESHttpHead
+          - es:ESHttpPost
+          - es:ESHttpPut
+        Resource: ${self:resources.Outputs.OpenSearchDomainArn.Value}
 environment:
   DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
   DYNAMODB_TABLE_EVENT_LOG: ${env:DYNAMODB_TABLE_EVENT_LOG}
   DYNAMODB_REGION: ${env:DYNAMODB_REGION}
   DYNAMODB_TABLE_USER_PROJECTION: ${env:DYNAMODB_TABLE_USER_PROJECTION}
   SECRET: verysecret
+  OPENSEARCH_DOMAIN_ENDPOINT: ${self:resources.Outputs.OpenSearchDomainEndpoint.Value}
+  OPENSEARCH_USERS_PROJECTION_INDEX: 'users'
+  OPENSEARCH_ARTICLES_PROJECTION_INDEX: 'articles'

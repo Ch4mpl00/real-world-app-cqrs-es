@@ -1,8 +1,10 @@
 import { createDynamodbUserRepository } from 'src/components/user/repository';
-import { createDynamoDbReadRepository } from 'src/components/user/readRepository';
+import { createOpenSearchReadRepository } from 'src/components/user/readRepository';
 import { createCommandHandlers } from 'src/components/user/commands';
 import { createDynamodbClient } from 'src/lib/dynamodb';
 import { ensure } from 'src/lib/common';
+import { createOpenSearchClient } from 'src/lib/opensearch';
+import process from 'process';
 
 const DYNAMODB_REGION = ensure(
   process.env.DYNAMODB_REGION,
@@ -14,9 +16,14 @@ const DYNAMODB_TABLE_EVENT_LOG = ensure(
   'process.env.DYNAMODB_TABLE_EVENT_LOG is not defined'
 );
 
-const DYNAMODB_TABLE_USER_PROJECTION = ensure(
-  process.env.DYNAMODB_TABLE_USER_PROJECTION,
-  'process.env.DYNAMODB_TABLE_USER_PROJECTION is not defined'
+const OPENSEARCH_USERS_PROJECTION_INDEX = ensure(
+  process.env.OPENSEARCH_USERS_PROJECTION_INDEX,
+  'process.env.OPENSEARCH_USERS_PROJECTION_INDEX is not defined'
+);
+
+const OPENSEARCH_DOMAIN_ENDPOINT = ensure(
+  process.env.OPENSEARCH_DOMAIN_ENDPOINT,
+  'process.env.OPENSEARCH_DOMAIN_ENDPOINT required'
 );
 
 const dynamodbEventLogClient = createDynamodbClient(DYNAMODB_REGION, process.env.DYNAMODB_ENDPOINT);
@@ -25,10 +32,14 @@ export const userRepository = createDynamodbUserRepository(
   DYNAMODB_TABLE_EVENT_LOG
 );
 
+const openSearchClient = createOpenSearchClient(OPENSEARCH_DOMAIN_ENDPOINT);
+
 const dynamodbUserProjectionClient = createDynamodbClient(DYNAMODB_REGION, process.env.DYNAMODB_ENDPOINT);
-export const userReadRepository = createDynamoDbReadRepository(
+export const userReadRepository = createOpenSearchReadRepository(
   dynamodbUserProjectionClient,
-  DYNAMODB_TABLE_USER_PROJECTION,
+  openSearchClient,
+  OPENSEARCH_USERS_PROJECTION_INDEX,
+  DYNAMODB_TABLE_EVENT_LOG,
   userRepository
 );
 export const command = createCommandHandlers(userRepository, userReadRepository);

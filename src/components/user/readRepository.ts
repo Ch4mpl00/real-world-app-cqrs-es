@@ -4,6 +4,8 @@ import { match } from 'ts-pattern';
 import { IUserRepository } from 'src/components/user/repository';
 import { Result } from '@badrap/result';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
+import { Client } from '@opensearch-project/opensearch';
+import { SearchResponse } from 'src/lib/opensearch';
 
 export type UserProjection = Readonly<{
   id: string
@@ -19,7 +21,6 @@ export type UserProjection = Readonly<{
 }>
 
 export const applyEvent = (user: UserProjection, event: DomainEvent) => {
-
   return match<UserDomainEvent, UserProjection>(event as UserDomainEvent)
     .with({ type: 'UserRegistered' }, (e) => ({
       id: e.aggregateId,
@@ -70,12 +71,14 @@ export type IUserReadRepository = {
   save: (projection: UserProjection) => Promise<Result<UserProjection, Error>>
 }
 
-export const createDynamoDbReadRepository = (
-  client: DocumentClient,
-  tableName: string,
-  userRepository: IUserRepository
+export const createOpenSearchReadRepository = (
+  dynamoDbClient: DocumentClient,
+  openSearchClient: Client,
+  indexName: string,
+  dynamoDbTableName: string,
+  userRepository: IUserRepository,
 ): IUserReadRepository => {
-  const find = async (id: string, consistentRead: boolean = false): Promise<UserProjection | null> => {
+  const find = async (id: string, consistentRead = false): Promise<UserProjection | null> => {
     if (consistentRead) {
       const events = await userRepository.getEvents(id);
 
@@ -88,46 +91,48 @@ export const createDynamoDbReadRepository = (
       return events.reduce((state, event) => applyEvent(state, event), {} as UserProjection);
     }
 
-    return client.query({
-      TableName: tableName,
-      KeyConditionExpression: '#id = :idValue',
-      ExpressionAttributeNames: {
-        '#id': 'id'
-      },
-      ExpressionAttributeValues: {
-        ':idValue': id
+    const res = await openSearchClient.search<SearchResponse<UserProjection>>({
+      index: indexName,
+      body: {
+        query: { match: { _id: id } }
       }
-    })
-      .promise()
-      .then(res => res.Items?.pop() as UserProjection | null)
-      .catch(() => null);
+    });
+
+    return res.body.hits.hits[0];
   };
 
   const findByEmail = async (email: string): Promise<UserProjection | null> => {
-    return client.query({
-      TableName: tableName,
-      IndexName: 'email',
-      KeyConditionExpression: '#email = :emailValue',
-      ExpressionAttributeNames: {
-        '#email': 'email'
-      },
-      ExpressionAttributeValues: {
-        ':emailValue': email
+    const res = await openSearchClient.search<SearchResponse<UserProjection>>({
+      index: indexName,
+      body: {
+        query: { match: { 'document.email.keyword': email } }
       }
-    })
-      .promise()
-      .then(res => res.Items?.pop() as UserProjection | null)
-      .catch(() => null);
+    });
+
+    return res.body.hits.hits[0];
+  };
+
+  const findByUsername = async (username: string) => {
+    const res = await openSearchClient.search<SearchResponse<UserProjection>>({
+      index: indexName,
+      body: {
+        query: { match: { 'document.username.keyword': username } }
+      }
+    });
+
+    return res.body.hits.hits[0];
   };
 
   const save = async (projection: UserProjection) => {
-    return client.put({
-      TableName: tableName,
-      Item: projection
+    return openSearchClient.index<SearchResponse<UserProjection>>({
+      index: indexName,
+      id: projection.id,
+      body: {
+        document: projection,
+      },
     })
-      .promise()
-      .then(() => Result.ok(projection))
-      .catch(Result.err);
+      .then(res => Result.ok(res.body.hits.hits[0]))
+      .catch(e => Result.err(e));
   };
 
   const onEvent = async (event: UserDomainEvent | DomainEvent) => {
@@ -138,28 +143,11 @@ export const createDynamoDbReadRepository = (
     await save(applyEvent(projection || {} as UserProjection, event));
   };
 
-  const findByUsername = async (username: string) => {
-    return client.query({
-      TableName: tableName,
-      IndexName: 'username',
-      KeyConditionExpression: '#username = :usernameValue',
-      ExpressionAttributeNames: {
-        '#username': 'username'
-      },
-      ExpressionAttributeValues: {
-        ':usernameValue': username
-      }
-    })
-      .promise()
-      .then(res => res.Items?.pop() as UserProjection | null)
-      .catch(() => null);
-  };
-
   return {
-    onEvent,
     find,
     findByUsername,
     findByEmail,
-    save
+    save,
+    onEvent,
   };
 };

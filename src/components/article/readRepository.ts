@@ -1,10 +1,12 @@
 import { Result } from '@badrap/result';
 import { DomainEvent, ensure } from 'src/lib/common';
 import { match } from 'ts-pattern';
-import { ArticleCreated } from './domain';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
+import { IEventLogRepository } from 'src/lib/event-log-repository';
+import { Client } from '@opensearch-project/opensearch';
+import { SearchResponse } from 'src/lib/opensearch';
+import { ArticleCreated } from './domain';
 import { IArticleRepository } from './repository';
-import { IEventLogRepository } from '../../lib/event-log-repository';
 import { UserAggregate } from '../user/domain/types';
 
 type ArticleAuthor = Readonly<{
@@ -32,7 +34,6 @@ export const applyEvent = (
   state: ArticleProjection,
   event: DomainEvent
 ): ArticleProjection => {
-
   return match<DomainEvent, ArticleProjection>(event)
     .with({ type: 'ArticleCreated' }, (e) => ({
       id: e.aggregateId,
@@ -68,74 +69,85 @@ export const applyEvent = (
     .run();
 };
 
-
 export type IArticleReadRepository = {
   find: (id: string, consistentRead?: boolean) => Promise<ArticleProjection | null>
+  findByAuthorUsername: (username: string) => Promise<ArticleProjection | null>
   save: (projection: ArticleProjection) => Promise<Result<ArticleProjection, Error>>
   onEvent: (event: DomainEvent) => Promise<void>
 }
 
-
 export const createDynamoDbReadRepository = (
-  client: DocumentClient,
-  tableName: string,
+  openSearchClient: Client,
+  indexName: string,
+  dynamoDbClient: DocumentClient,
+  dynamoDbTableName: string,
   articleRepository: IArticleRepository,
   eventLogRepository: IEventLogRepository<DomainEvent, UserAggregate>
 ): IArticleReadRepository => {
+  const findWithConsistentRead = async (id: string): Promise<ArticleProjection | null> => {
+    const events = await articleRepository.getEvents(id);
 
-  const find = async (id: string, consistentRead = false): Promise<ArticleProjection | null> => {
-    if (consistentRead) {
-      const events = await articleRepository.getEvents(id);
-
-      if (events.length === 0) return null;
-      if (events[0].type !== 'ArticleCreated') {
-        console.error(`Invalid events ordering for aggregate ${id}`);
-        return null;
-      }
-
-      const authorId = (events[0] as ArticleCreated).payload.authorId;
-      const authorEvents = await eventLogRepository.getEvents(authorId);
-
-      return [...events, ...authorEvents].reduce((state, event) => applyEvent(state, event), {} as ArticleProjection);
+    if (events.length === 0) return null;
+    if (events[0].type !== 'ArticleCreated') {
+      console.error(`Invalid events ordering for aggregate ${id}`);
+      return null;
     }
 
-    return client.query({
-      TableName: tableName,
-      KeyConditionExpression: '#id = :idValue',
-      ExpressionAttributeNames: {
-        '#id': 'id'
-      },
-      ExpressionAttributeValues: {
-        ':idValue': id
+    const { authorId } = (events[0] as ArticleCreated).payload;
+    const authorEvents = await eventLogRepository.getEvents(authorId);
+
+    return [...events, ...authorEvents].reduce((state, event) => applyEvent(state, event), {} as ArticleProjection);
+  };
+
+  const find = async (id: string, consistentRead = false): Promise<ArticleProjection | null> => {
+    if (consistentRead) return findWithConsistentRead(id);
+
+    const res = await openSearchClient.search<SearchResponse<ArticleProjection>>({
+      index: indexName,
+      body: {
+        query: { match: { _id: id } }
       }
+    });
+
+    return res.body.hits.hits[0];
+  };
+
+  const findByAuthorUsername = async (username: string): Promise<ArticleProjection | null> => {
+    const res = await openSearchClient.search<SearchResponse<ArticleProjection>>({
+      index: indexName,
+      body: {
+        query: { match: { 'document.author.username.keyword': username } }
+      }
+    });
+
+    return res.body.hits.hits[0];
+  };
+
+  const save = async (projection: ArticleProjection) => {
+    return openSearchClient.index<SearchResponse<ArticleProjection>>({
+      index: indexName,
+      id: projection.id,
+      body: {
+        document: projection,
+      },
     })
-      .promise()
-      .then(res => res.Items?.pop() as ArticleProjection)
-      .catch(() => null);
+      .then(res => Result.ok(res.body.hits.hits[0]))
+      .catch(e => Result.err(e));
   };
 
   const onEvent = async (event: DomainEvent) => {
     if (event.aggregate !== 'article') return;
+    // update all author's articles also
 
     const projection = await find(event.aggregateId);
 
     await save(applyEvent(projection || {} as ArticleProjection, event));
   };
 
-  const save = async (projection: ArticleProjection) => {
-    return client.put({
-      TableName: tableName,
-      Item: projection
-    })
-      .promise()
-      .then(() => Result.ok(projection))
-      .catch(Result.err);
-  };
-
   return {
     find,
+    findByAuthorUsername,
     save,
     onEvent,
-  }
-}
-
+  };
+};

@@ -1,8 +1,7 @@
-service: user
+service: realworld-cqrs-es-app
 useDotenv: true
 
 plugins:
-  #  - serverless-tscpaths
   - serverless-esbuild
   - serverless-offline
 #  - serverless-plugin-warmup
@@ -72,7 +71,7 @@ resources:
               Action:
                 - sqs:SendMessage
               Resource: arn:aws:sqs:*
-    EventLogTable:
+    EventLogDynamoDbTable:
       Type: AWS::DynamoDB::Table
       DeletionPolicy: Retain
       Properties:
@@ -92,43 +91,40 @@ resources:
           WriteCapacityUnits: 1
         StreamSpecification:
           StreamViewType: NEW_IMAGE
-    UsersDynamoDBTable:
-      Type: AWS::DynamoDB::Table
-      DeletionPolicy: Delete
+    OpenSearchServiceDomain:
+      Type: AWS::OpenSearchService::Domain
       Properties:
-        TableName: user-projection
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-          - AttributeName: email
-            AttributeType: S
-          - AttributeName: username
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-        GlobalSecondaryIndexes:
-          - IndexName: email
-            KeySchema:
-              - AttributeName: email
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
-          - IndexName: username
-            KeySchema:
-              - AttributeName: username
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
+        DomainName: 'projections'
+        ClusterConfig:
+          DedicatedMasterEnabled: false
+          InstanceCount: '1'
+          ZoneAwarenessEnabled: false
+          InstanceType: 't3.small.search'
+        EBSOptions:
+          EBSEnabled: true
+          VolumeSize: '20'
+          VolumeType: 'gp2'
+        AccessPolicies:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Principal:
+                AWS: ${env:OPENSEARCH_PRINCIPAL_ROLE}
+              Action: 'es:*'
+              Resource: ${env:OPENSEARCH_RESOURCE}
+        AdvancedOptions:
+          rest.action.multi.allow_explicit_index: 'true'
   Outputs:
     DomainEventsSNSTopicArn:
       Value: !Ref DomainEventsSNSTopic
+    OpenSearchDomainEndpoint:
+      Value:
+        Fn::GetAtt:
+          - OpenSearchServiceDomain
+          - DomainEndpoint
+    OpenSearchDomainArn:
+      Value:
+        Fn::GetAtt:
+          - OpenSearchServiceDomain
+          - DomainArn
+

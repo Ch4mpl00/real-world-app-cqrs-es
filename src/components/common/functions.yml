@@ -7,7 +7,10 @@ event_log_stream_listener:
   events:
     - stream:
         type: dynamodb
-        arn: ${env:DYNAMODB_TABLE_EVENT_LOG_STREAM_ARN}
+        arn:
+          Fn::GetAtt:
+            - EventLogDynamoDbTable
+            - StreamArn
         maximumRetryAttempts: 3
         batchSize: 10
         startingPosition: LATEST
