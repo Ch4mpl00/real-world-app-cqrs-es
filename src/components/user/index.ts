@@ -34,9 +34,9 @@ export const userRepository = createDynamodbUserRepository(
 
 const openSearchClient = createOpenSearchClient(OPENSEARCH_DOMAIN_ENDPOINT);
 
-const dynamodbUserProjectionClient = createDynamodbClient(DYNAMODB_REGION, process.env.DYNAMODB_ENDPOINT);
+const dynamodbClient = createDynamodbClient(DYNAMODB_REGION, process.env.DYNAMODB_ENDPOINT);
 export const userReadRepository = createOpenSearchReadRepository(
-  dynamodbUserProjectionClient,
+  dynamodbClient,
   openSearchClient,
   OPENSEARCH_USERS_PROJECTION_INDEX,
   DYNAMODB_TABLE_EVENT_LOG,

@@ -20,3 +20,7 @@ export function ensure<T>(argument: T | undefined | null, message: string): T {
 
   return argument;
 }
+
+export type AuthContext = {
+  principalId: string
+}

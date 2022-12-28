@@ -18,6 +18,13 @@ export type SearchResponse<T> = {
       relation: string
     },
     'max_score': any,
-    'hits': T[]
+    'hits': {
+      _id: string,
+      _index: string,
+      _score: number,
+      _source: {
+        document: T
+      }
+    }[]
   }
 }

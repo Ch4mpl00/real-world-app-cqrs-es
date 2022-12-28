@@ -11,6 +11,7 @@ provider: ${file(_provider.yml)}
 functions:
   - ${file(src/components/common/functions.yml)}
   - ${file(src/components/user/functions.yml)}
+  - ${file(src/components/article/functions.yml)}
 
 custom:
   tscpaths:
@@ -31,12 +32,17 @@ resources:
       Properties:
         QueueName: user_greetings.fifo
         FifoQueue: true
+    ArticleProjectionSqsQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: article-projection.fifo
+        FifoQueue: true
     DomainEventsSNSTopic:
       Type: AWS::SNS::Topic
       Properties:
         FifoTopic: true
         TopicName: DomainEventsTopic.fifo
-    UserProjectionQueueSubscription:
+    UserProjectionSqsQueueSubscription:
       Type: "AWS::SNS::Subscription"
       Properties:
         TopicArn: !Ref DomainEventsSNSTopic
@@ -46,7 +52,7 @@ resources:
             - Arn
         Protocol: sqs
         RawMessageDelivery: "true"
-    UserAnotherSubscription:
+    UserGreetingsEmailsQueueSubscription:
       Type: "AWS::SNS::Subscription"
       Properties:
         TopicArn: !Ref DomainEventsSNSTopic
@@ -56,12 +62,23 @@ resources:
             - Arn
         Protocol: sqs
         RawMessageDelivery: "true"
+    ArticleProjectionSqsQueueSubscription:
+      Type: "AWS::SNS::Subscription"
+      Properties:
+        TopicArn: !Ref DomainEventsSNSTopic
+        Endpoint:
+          Fn::GetAtt:
+            - ArticleProjectionSqsQueue
+            - Arn
+        Protocol: sqs
+        RawMessageDelivery: "true"
     ExtraQueuePolicy:
       Type: AWS::SQS::QueuePolicy
       Properties:
         Queues:
           - !Ref UserProjectionSqsQueue
           - !Ref UserGreetingsEmailsQueue
+          - !Ref ArticleProjectionSqsQueue
         PolicyDocument:
           Statement:
             - Sid: Allow-SNS-SendMessage-${self:service}

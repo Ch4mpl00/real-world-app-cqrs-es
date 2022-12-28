@@ -1,9 +1,17 @@
 import { Result } from '@badrap/result';
 import { match } from 'ts-pattern';
-import { ArticleDomainEvent, createArticleCreatedEvent } from 'src/components/article/domain/events';
+import {
+  ArticleDomainEvent,
+  createArticleCreatedEvent,
+  createArticleUpdatedEvent
+} from 'src/components/article/domain/events';
 import { ArticleAggregate, Tag } from 'src/components/article/domain/types';
+import {
+  ArticleAuthorCannotBeChanged,
+  createArticleAuthorCannotBeChangedError
+} from 'src/components/article/domain/errors';
 
-type CreationData = {
+type ArticleData = {
     slug: string;
     title: string
     description: string
@@ -19,6 +27,10 @@ export const applyEvent = (article: ArticleAggregate, event: ArticleDomainEvent)
 
   const state = match<ArticleDomainEvent, ArticleAggregate['state']>(event)
     .with({ type: 'ArticleCreated' }, (e) => e.payload)
+    .with({ type: 'ArticleUpdated' }, (e) => ({
+      ...article.state,
+      ...e.payload,
+    }))
     .exhaustive();
 
   if (!state) return article;
@@ -59,10 +71,24 @@ export const restore = (id: string, events: readonly ArticleDomainEvent[]) => {
 
 export const create = (
   id: string,
-  data: CreationData,
+  data: ArticleData,
   context: { timestamp: number }
 ): Result<ArticleAggregate, never> => {
   return Result.ok(
     applyEvent(initialState(id), createArticleCreatedEvent(id, data, context.timestamp))
+  );
+};
+
+export const update = (
+  article: ArticleAggregate,
+  data: Partial<ArticleData>,
+  context: { timestamp: number }
+): Result<ArticleAggregate, ArticleAuthorCannotBeChanged> => {
+  if (data.authorId && article.state.authorId !== data.authorId) {
+    return Result.err(createArticleAuthorCannotBeChangedError());
+  }
+
+  return Result.ok(
+    applyEvent(article, createArticleUpdatedEvent(article.id, data, context.timestamp))
   );
 };

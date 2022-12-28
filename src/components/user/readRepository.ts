@@ -98,7 +98,7 @@ export const createOpenSearchReadRepository = (
       }
     });
 
-    return res.body.hits.hits[0];
+    return res.body.hits.hits[0]?._source.document;
   };
 
   const findByEmail = async (email: string): Promise<UserProjection | null> => {
@@ -109,7 +109,7 @@ export const createOpenSearchReadRepository = (
       }
     });
 
-    return res.body.hits.hits[0];
+    return res.body.hits.hits[0]?._source.document;
   };
 
   const findByUsername = async (username: string) => {
@@ -120,7 +120,7 @@ export const createOpenSearchReadRepository = (
       }
     });
 
-    return res.body.hits.hits[0];
+    return res.body.hits.hits[0]?._source.document;
   };
 
   const save = async (projection: UserProjection) => {
@@ -131,7 +131,7 @@ export const createOpenSearchReadRepository = (
         document: projection,
       },
     })
-      .then(res => Result.ok(res.body.hits.hits[0]))
+      .then(res => Result.ok(res.body.hits.hits[0]?._source.document))
       .catch(e => Result.err(e));
   };
 

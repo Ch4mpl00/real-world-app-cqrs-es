@@ -105,6 +105,7 @@ export const loginHandler = middy(async (event: ApiGatewayEventBody): Promise<Ap
       body: JSON.stringify({ user: { ...createUserView(user), token } })
     };
   }
+
   return {
     statusCode: 422,
     body: JSON.stringify({ error: 'InvalidCredentials', message: 'Wrong email or password' })

@@ -2,12 +2,10 @@ import { Result } from '@badrap/result';
 import { DomainEvent, ensure } from 'src/lib/common';
 import { match } from 'ts-pattern';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
-import { IEventLogRepository } from 'src/lib/event-log-repository';
 import { Client } from '@opensearch-project/opensearch';
 import { SearchResponse } from 'src/lib/opensearch';
 import { ArticleCreated } from './domain';
 import { IArticleRepository } from './repository';
-import { UserAggregate } from '../user/domain/types';
 
 type ArticleAuthor = Readonly<{
   id: string
@@ -48,6 +46,12 @@ export const applyEvent = (
       updatedAt: e.timestamp,
       author: state.author
     }))
+    .with({ type: 'ArticleUpdated' }, (e) => ({
+      ...state,
+      ...e.payload,
+      version: ensure(e.version, 'event.version required'),
+      updatedAt: e.timestamp,
+    }))
     .with({ type: 'UserRegistered' }, (e) => ({
       ...state,
       author: {
@@ -72,17 +76,17 @@ export const applyEvent = (
 export type IArticleReadRepository = {
   find: (id: string, consistentRead?: boolean) => Promise<ArticleProjection | null>
   findByAuthorUsername: (username: string) => Promise<ArticleProjection | null>
+  findBySlug: (slug: string) => Promise<ArticleProjection | null>
   save: (projection: ArticleProjection) => Promise<Result<ArticleProjection, Error>>
   onEvent: (event: DomainEvent) => Promise<void>
 }
 
-export const createDynamoDbReadRepository = (
+export const createOpenSearchArticleReadRepository = (
   openSearchClient: Client,
   indexName: string,
   dynamoDbClient: DocumentClient,
   dynamoDbTableName: string,
   articleRepository: IArticleRepository,
-  eventLogRepository: IEventLogRepository<DomainEvent, UserAggregate>
 ): IArticleReadRepository => {
   const findWithConsistentRead = async (id: string): Promise<ArticleProjection | null> => {
     const events = await articleRepository.getEvents(id);
@@ -94,7 +98,7 @@ export const createDynamoDbReadRepository = (
     }
 
     const { authorId } = (events[0] as ArticleCreated).payload;
-    const authorEvents = await eventLogRepository.getEvents(authorId);
+    const authorEvents = await articleRepository.getAuthorEvents(authorId);
 
     return [...events, ...authorEvents].reduce((state, event) => applyEvent(state, event), {} as ArticleProjection);
   };
@@ -109,7 +113,7 @@ export const createDynamoDbReadRepository = (
       }
     });
 
-    return res.body.hits.hits[0];
+    return res.body.hits.hits[0]?._source.document;
   };
 
   const findByAuthorUsername = async (username: string): Promise<ArticleProjection | null> => {
@@ -120,7 +124,18 @@ export const createDynamoDbReadRepository = (
       }
     });
 
-    return res.body.hits.hits[0];
+    return res.body.hits.hits[0]?._source.document;
+  };
+
+  const findBySlug = async (slug: string): Promise<ArticleProjection | null> => {
+    const res = await openSearchClient.search<SearchResponse<ArticleProjection>>({
+      index: indexName,
+      body: {
+        query: { match: { 'document.slug.keyword': slug } }
+      }
+    });
+
+    return res.body.hits.hits[0]?._source.document;
   };
 
   const save = async (projection: ArticleProjection) => {
@@ -131,13 +146,13 @@ export const createDynamoDbReadRepository = (
         document: projection,
       },
     })
-      .then(res => Result.ok(res.body.hits.hits[0]))
+      .then(res => Result.ok(res.body.hits.hits[0]?._source.document))
       .catch(e => Result.err(e));
   };
 
   const onEvent = async (event: DomainEvent) => {
     if (event.aggregate !== 'article') return;
-    // update all author's articles also
+    // TODO: update all author's articles also
 
     const projection = await find(event.aggregateId);
 
@@ -147,6 +162,7 @@ export const createDynamoDbReadRepository = (
   return {
     find,
     findByAuthorUsername,
+    findBySlug,
     save,
     onEvent,
   };

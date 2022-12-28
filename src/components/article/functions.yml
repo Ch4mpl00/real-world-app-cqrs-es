@@ -1,0 +1,47 @@
+createArticle:
+  handler: src/components/article/handlers.createArticleHandler
+  events:
+    - http:
+        path: articles
+        method: post
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenAuthorizer
+          identitySource: method.request.header.Authorization
+          type: token
+updateArticleBySlug:
+  handler: src/components/article/handlers.updateArticleBySlugHandler
+  events:
+    - http:
+        path: articles/{slug}
+        method: put
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenAuthorizer
+          identitySource: method.request.header.Authorization
+          type: token
+createArticleProjection:
+  handler: src/components/article/handlers.createProjectionHandler
+  events:
+    - sqs:
+        arn:
+          Fn::GetAtt:
+            - ArticleProjectionSqsQueue
+            - Arn
+        batchSize: 10
+        functionResponseType: ReportBatchItemFailures
+#UpdateArticle:
+#  handler: src/components/user/handlers.updateUserHandler
+#  events:
+#    - http:
+#        path: user
+#        method: put
+#        cors: true
+#        integration: lambda-proxy
+#        authorizer:
+#          name: tokenAuthorizer
+#          identitySource: method.request.header.Authorization
+#          type: token
+
