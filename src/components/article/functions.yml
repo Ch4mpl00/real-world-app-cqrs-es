@@ -22,6 +22,30 @@ updateArticleBySlug:
           name: tokenAuthorizer
           identitySource: method.request.header.Authorization
           type: token
+getAllArticles:
+  handler: src/components/article/handlers.getAllArticlesHandler
+  events:
+    - http:
+        path: articles
+        method: get
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenOrGuestAuthorizer
+          identitySource: method.request.header.Authorization
+          type: request
+getArticleBySlug:
+  handler: src/components/article/handlers.getArticleBySlugHandler
+  events:
+    - http:
+        path: articles/{slug}
+        method: get
+        cors: true
+        integration: lambda-proxy
+        authorizer:
+          name: tokenOrGuestAuthorizer
+          identitySource: method.request.header.Authorization
+          type: request
 createArticleProjection:
   handler: src/components/article/handlers.createProjectionHandler
   events:
@@ -32,6 +56,7 @@ createArticleProjection:
             - Arn
         batchSize: 10
         functionResponseType: ReportBatchItemFailures
+
 #UpdateArticle:
 #  handler: src/components/user/handlers.updateUserHandler
 #  events:

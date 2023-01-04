@@ -8,14 +8,14 @@ export type ArticleAuthorCannotBeChanged = Readonly<{
     message: string,
 }>
 
-export type OnlyAuthorCanUpdateArticle = Readonly<{
-    name: 'OnlyAuthorCanUpdateArticle',
+export type NotAuthorizedToModifyArticle = Readonly<{
+    name: 'NotAuthorizedToModifyArticle',
     message: string,
 }>
 
 export type ArticleError =
     | ArticleAuthorCannotBeChanged
-    | OnlyAuthorCanUpdateArticle
+    | NotAuthorizedToModifyArticle
     | ArticleNotFound
 
 export const createArticleAuthorCannotBeChangedError = (): ArticleAuthorCannotBeChanged => ({
@@ -28,7 +28,7 @@ export const createArticleNotFoundError = (id: string): ArticleNotFound => ({
   message: `Article "${id}" not found`,
 });
 
-export const createOnlyAuthorCanUpdateArticleError = (): OnlyAuthorCanUpdateArticle => ({
-  name: 'OnlyAuthorCanUpdateArticle',
+export const createNotAuthorizedToModifyArticleError = (): NotAuthorizedToModifyArticle => ({
+  name: 'NotAuthorizedToModifyArticle',
   message: 'Article can be updated only by it\'s author',
 });

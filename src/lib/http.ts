@@ -30,8 +30,12 @@ export type ApiGatewayEventBody<T = any> = {
   headers: Record<string, string>,
 } & EventRequestContext
 
-export type EventQuery<T> = {
+export type EventQuery<T extends {}> = {
   queryStringParameters: T
+}
+
+export type PaginatedEventQuery<T extends {} = {}> = {
+  queryStringParameters: T & { limit: number, offset: number }
 }
 
 export type EventPath<T> = {

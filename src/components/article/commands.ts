@@ -6,7 +6,7 @@ import { IArticleReadRepository } from 'src/components/article/readRepository';
 import {
   ArticleError,
   createArticleNotFoundError,
-  createOnlyAuthorCanUpdateArticleError
+  createNotAuthorizedToModifyArticleError
 } from 'src/components/article/domain/errors';
 import { ArticleAggregate } from 'src/components/article/domain';
 import { AuthContext } from 'src/lib/common';
@@ -18,7 +18,7 @@ export const createCommandHandlers = (
   articleReadRepository: IArticleReadRepository
 ) => {
   const create = async (id: string, data: ArticleDto) => {
-    const slug = `${slugify(data.title)}-${id}`;
+    const slug = `${slugify(data.title)}_${id}`;
 
     const result = ArticleDomain.create(
       id,
@@ -34,9 +34,9 @@ export const createCommandHandlers = (
   const update = async (id: string, data: ArticleDto, authContext: AuthContext): Promise<Result<ArticleAggregate, ArticleError>> => {
     const article = await articleRepository.get(id);
     if (!article) return Result.err(createArticleNotFoundError(id));
-    if (article.state.authorId !== authContext.principalId) return Result.err(createOnlyAuthorCanUpdateArticleError());
+    if (article.state.authorId !== authContext.principalId) return Result.err(createNotAuthorizedToModifyArticleError());
 
-    const slug = `${slugify(data.title || article.state.title)}-${id}`;
+    const slug = `${slugify(data.title || article.state.title)}_${id}`;
     const result = ArticleDomain.update(
       article,
       { ...data, slug },

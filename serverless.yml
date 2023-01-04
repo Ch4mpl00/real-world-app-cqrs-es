@@ -129,6 +129,14 @@ resources:
                 AWS: ${env:OPENSEARCH_PRINCIPAL_ROLE}
               Action: 'es:*'
               Resource: ${env:OPENSEARCH_RESOURCE}
+            - Effect: 'Allow'
+              Principal:
+                AWS: '*'
+              Action: 'es:*'
+              Resource: 'arn:aws:es:eu-central-1:097006140970:domain/projections/*'
+              Condition:
+                IpAddress:
+                  aws:SourceIp: "195.138.68.69" # TODO: remove
         AdvancedOptions:
           rest.action.multi.allow_explicit_index: 'true'
   Outputs:

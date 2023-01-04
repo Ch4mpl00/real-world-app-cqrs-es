@@ -19,6 +19,7 @@
     "@faker-js/faker": "^7.3.0",
     "@middy/core": "^2.5.7",
     "@middy/http-error-handler": "^2.5.7",
+    "@middy/http-event-normalizer": "^4.0.9",
     "@middy/http-json-body-parser": "^2.5.7",
     "@middy/validator": "^2.5.7",
     "@opensearch-project/opensearch": "^2.1.0",
@@ -46,6 +47,7 @@
     "mock-aws-s3": "^4.0.2",
     "monet": "^0.9.2",
     "nock": "^13.2.4",
+    "serverless": "^3.26.0",
     "slugify": "^1.6.5",
     "ts-pattern": "^3.0.6",
     "uuid": "^8.3.2"

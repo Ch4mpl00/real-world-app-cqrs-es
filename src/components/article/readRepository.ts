@@ -28,6 +28,16 @@ export type ArticleProjection = Readonly<{
   version: number
 }>
 
+export type ArticlesProjectionList = {
+  items: ArticleProjection[]
+  total: number
+}
+
+export type ArticleQuery = {
+  tags?: string[];
+  authorUsername?: string,
+}
+
 export const applyEvent = (
   state: ArticleProjection,
   event: DomainEvent
@@ -75,8 +85,8 @@ export const applyEvent = (
 
 export type IArticleReadRepository = {
   find: (id: string, consistentRead?: boolean) => Promise<ArticleProjection | null>
-  findByAuthorUsername: (username: string) => Promise<ArticleProjection | null>
   findBySlug: (slug: string) => Promise<ArticleProjection | null>
+  findMany: (query: ArticleQuery, limit: number, offset: number) => Promise<ArticlesProjectionList>
   save: (projection: ArticleProjection) => Promise<Result<ArticleProjection, Error>>
   onEvent: (event: DomainEvent) => Promise<void>
 }
@@ -116,17 +126,6 @@ export const createOpenSearchArticleReadRepository = (
     return res.body.hits.hits[0]?._source.document;
   };
 
-  const findByAuthorUsername = async (username: string): Promise<ArticleProjection | null> => {
-    const res = await openSearchClient.search<SearchResponse<ArticleProjection>>({
-      index: indexName,
-      body: {
-        query: { match: { 'document.author.username.keyword': username } }
-      }
-    });
-
-    return res.body.hits.hits[0]?._source.document;
-  };
-
   const findBySlug = async (slug: string): Promise<ArticleProjection | null> => {
     const res = await openSearchClient.search<SearchResponse<ArticleProjection>>({
       index: indexName,
@@ -136,6 +135,44 @@ export const createOpenSearchArticleReadRepository = (
     });
 
     return res.body.hits.hits[0]?._source.document;
+  };
+
+  const findMany = async (query: ArticleQuery, limit: number, offset: number): Promise<ArticlesProjectionList> => {
+    const must = [];
+
+    if (query.authorUsername) {
+      must.push({
+        term: {
+          'document.author.username.keyword': query.authorUsername
+        }
+      });
+    }
+
+    if (query.tags) {
+      must.push({
+        terms: {
+          'document.tagList.keyword': query.tags
+        }
+      });
+    }
+
+    const res = await openSearchClient.search<SearchResponse<ArticleProjection>>({
+      index: indexName,
+      body: {
+        query: {
+          bool: {
+            must
+          }
+        },
+        from: offset,
+        size: limit,
+      }
+    });
+
+    return {
+      items: res.body.hits.hits.map(hit => hit._source.document),
+      total: res.body.hits.total.value
+    };
   };
 
   const save = async (projection: ArticleProjection) => {
@@ -156,13 +193,24 @@ export const createOpenSearchArticleReadRepository = (
 
     const projection = await find(event.aggregateId);
 
+    if (!projection) {
+      if (event.type !== 'ArticleCreated') return;
+
+      const { authorId } = event.payload;
+      const authorEvents = await articleRepository.getAuthorEvents(authorId);
+
+      await save([event, ...authorEvents].reduce((state, e) => applyEvent(state, e), {} as ArticleProjection));
+
+      return;
+    }
+
     await save(applyEvent(projection || {} as ArticleProjection, event));
   };
 
   return {
     find,
-    findByAuthorUsername,
     findBySlug,
+    findMany,
     save,
     onEvent,
   };

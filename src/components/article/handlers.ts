@@ -1,5 +1,7 @@
 import middy from '@middy/core';
-import { ApiGatewayEventBody, ApiGatewayResponse, EventPath } from 'src/lib/http';
+import {
+  ApiGatewayEventBody, ApiGatewayResponse, EventPath, PaginatedEventQuery
+} from 'src/lib/http';
 import { v4 } from 'uuid';
 import { articleReadRepository, command } from 'src/components/article/index';
 import jsonBodyParser from '@middy/http-json-body-parser';
@@ -8,6 +10,9 @@ import Joi from 'joi';
 import { DomainEvent, ensure } from 'src/lib/common';
 import { match } from 'ts-pattern';
 import { SQSEvent } from 'aws-lambda';
+import { createArticleApiView } from 'src/components/article/view';
+import { ArticleQuery } from 'src/components/article/readRepository';
+import httpEventNormalizer, { Event } from '@middy/http-event-normalizer';
 
 export const createArticleHandler = middy(async (event: ApiGatewayEventBody): Promise<ApiGatewayResponse> => {
   const authorId = event.requestContext.authorizer.principalId;
@@ -22,7 +27,7 @@ export const createArticleHandler = middy(async (event: ApiGatewayEventBody): Pr
 
     return {
       statusCode: 201,
-      body: JSON.stringify({ article })
+      body: JSON.stringify({ article: createArticleApiView(article) })
     };
   }
 
@@ -59,7 +64,7 @@ export const updateArticleBySlugHandler = middy(async (event: UpdateArticleBySlu
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ article })
+      body: JSON.stringify({ article: createArticleApiView(article) })
     };
   }
 
@@ -89,6 +94,69 @@ export const updateArticleBySlugHandler = middy(async (event: UpdateArticleBySlu
       })
     }
   }));
+
+type ArticleQueryReq = Event & PaginatedEventQuery<{
+  author: string
+  favorited: string
+  tag: string
+}>
+export const getAllArticlesHandler = middy(async (event: ArticleQueryReq): Promise<ApiGatewayResponse> => {
+  const queryParameters = event?.queryStringParameters || {};
+  const query: ArticleQuery = {};
+
+  if (queryParameters.author) {
+    query.authorUsername = queryParameters.author;
+  }
+
+  if (queryParameters.tag) {
+    query.tags = [queryParameters.tag];
+  }
+
+  if (queryParameters.favorited) {
+    // TODO
+  }
+
+  const articles = await articleReadRepository.findMany(
+    query,
+    queryParameters.limit,
+    queryParameters.offset
+  );
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      articles: articles.items.map(createArticleApiView),
+      articlesCount: articles.total,
+    })
+  };
+})
+  .use(httpEventNormalizer())
+  .use(validate({
+    queryStringParameters: {
+      limit: Joi.number().optional().default(20),
+      offset: Joi.number().optional().default(0),
+      author: Joi.string().optional(),
+      favorited: Joi.string().optional(),
+      tag: Joi.string().optional(),
+    }
+  }));
+
+export const getArticleBySlugHandler = async (event: ApiGatewayEventBody & EventPath<{ slug: string }>) => {
+  const { slug } = event.pathParameters;
+  const article = await articleReadRepository.findBySlug(slug);
+
+  if (!article) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ error: 'NotFound', message: `Article with slug ${slug} not found` })
+    };
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ article: createArticleApiView(article) })
+  };
+};
 
 export const createProjectionHandler = (event: SQSEvent) => {
   const records = event.Records;
